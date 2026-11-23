@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CineMax - Enhanced ERD</title>
+<style>
+ body{font-family:"Segoe UI",Arial,sans-serif;margin:0;background:#f5f6fa;color:#1c2030}
+ header{background:#0f1117;color:#fff;padding:22px 32px}
+ header h1{margin:0 0 4px;font-size:1.7rem} header p{margin:0;color:#9aa1b5}
+ nav{position:sticky;top:0;background:#fff;border-bottom:1px solid #d9dce6;padding:8px 24px;z-index:5;display:flex;gap:6px;flex-wrap:wrap}
+ nav a{padding:6px 12px;border-radius:6px;text-decoration:none;color:#333;font-size:.85rem;font-weight:600}
+ nav a:hover{background:#eceef5}
+ section{background:#fff;margin:20px auto;max-width:1500px;padding:22px 28px;border-radius:10px;border:1px solid #e1e4ee}
+ h2{margin-top:0;border-bottom:2px solid #e50914;padding-bottom:6px;display:inline-block}
+ .muted{color:#7a8094;font-weight:400}
+ .diagram{overflow-x:auto;padding:10px 0}
+ table{border-collapse:collapse;width:100%;font-size:.85rem;margin:8px 0}
+ th,td{border:1px solid #dfe2ec;padding:6px 10px;text-align:left;vertical-align:top}
+ th{background:#f0f2f8}
+ code{background:#eef0f7;padding:1px 5px;border-radius:4px}
+ details{margin:6px 0;border:1px solid #e1e4ee;border-radius:8px;padding:6px 12px}
+ summary{cursor:pointer;padding:4px 0}
+ .pill{display:inline-block;background:#e50914;color:#fff;border-radius:20px;padding:2px 12px;font-size:.8rem;margin-left:8px}
+ .legend{font-size:.85rem;background:#f8f9fc;border:1px dashed #cfd3e2;padding:10px 14px;border-radius:8px;margin-bottom:10px}
+ @media print{nav{display:none} section{break-inside:avoid-page;border:0;margin:0}.diagram{overflow:visible} details{display:block} details>*{display:block}}
+</style></head><body>
+<header><h1>CineMax Cinema Management System - Enhanced ERD <span class="pill">20 entities</span></h1>
+<p>Production-ready design for online + counter ticketing, scheduling, payments, food, promotions and administration. Generated from <code>schema.sql</code> (MySQL / MariaDB).</p></header>
+<nav><a href="#overview">Complete ERD</a><a href="#changes">What changed</a>
+<a href="#users">1. Users & Security</a><a href="#catalogue">2. Movie Catalogue</a><a href="#infra">3. Cinema Infrastructure</a><a href="#scheduling">4. Scheduling & Pricing</a><a href="#booking">5. Booking, Payment & Promotions</a><a href="#food">6. Food & Beverage</a>
+<a href="#rules">Business rules</a><a href="#cardinality">Cardinalities</a><a href="#dictionary">Data dictionary</a></nav>
+
+<section id="overview"><h2>Complete ERD - all 20 entities</h2>
+<div class="legend">Crow's Foot notation: <code>||</code> exactly one, <code>|o</code> / <code>o|</code> zero or one, <code>o{</code> zero or many. PK = primary key, FK = foreign key, UK = unique key. The same model is split by module further down for easier reading.</div>
+<div class="diagram"><pre class="mermaid">erDiagram
+  AUDIT_LOG {
+    bigint audit_id PK
+    int user_id FK
+    varchar action
+    varchar entity_name
+    varchar entity_id
+    text old_value
+    text new_value
+    varchar ip_address
+    datetime created_at
+  }
+  BOOKING {
+    int booking_id PK
+    char booking_reference
+    int user_id FK
+    varchar guest_phone
+    int showtime_id FK
+    enum booking_channel
+    int sold_by_user_id FK
+    int promotion_id FK
+    decimal ticket_subtotal
+    decimal food_subtotal
+    decimal discount_amount
+    decimal total_amount
+    enum booking_status
+    datetime booking_time
+    datetime payment_deadline
+    datetime cancelled_at
+  }
+  BOOKING_SEAT {
+    int booking_seat_id PK
+    int booking_id FK
+    int showtime_id FK
+    int screen_id FK
+    int seat_id FK
+    decimal seat_price
+    enum seat_status
+    datetime hold_expires_at
+    tinyint active_slot "derived"
+  }
+  CINEMA {
+    int cinema_id PK
+    varchar cinema_name
+    varchar city
+    varchar address
+    varchar contact_number
+    enum cinema_status
+  }
+  FOOD_ITEM {
+    int food_item_id PK
+    varchar item_name
+    enum category
+    varchar description
+    decimal current_price
+    enum availability_status
+  }
+  FOOD_ORDER {
+    int food_order_id PK
+    int booking_id FK
+    datetime order_time
+    enum order_status
+    decimal total_amount
+  }
+  GENRE {
+    int genre_id PK
+    varchar genre_name
+  }
+  MOVIE {
+    int movie_id PK
+    varchar title
+    smallint duration_minutes
+    date release_date
+    varchar language
+    enum content_rating
+    varchar director
+    varchar cast_members
+    text synopsis
+    varchar poster_url
+    varchar trailer_url
+    enum movie_status
+    datetime created_at
+  }
+  MOVIE_GENRE {
+    int movie_id PK,FK
+    int genre_id PK,FK
+  }
+  MOVIE_REVIEW {
+    int review_id PK
+    int movie_id FK
+    int user_id FK
+    tinyint rating
+    varchar review_text
+    datetime created_at
+  }
+  ORDER_DETAIL {
+    int order_detail_id PK
+    int food_order_id FK
+    int food_item_id FK
+    smallint quantity
+    decimal unit_price
+    decimal line_total "derived"
+  }
+  PAYMENT {
+    int payment_id PK
+    int booking_id FK
+    enum payment_type
+    decimal amount
+    enum payment_method
+    enum payment_status
+    varchar transaction_reference
+    int processed_by_user_id FK
+    datetime created_at
+    datetime paid_at
+  }
+  PROMOTION {
+    int promotion_id PK
+    varchar promo_code
+    varchar description
+    enum discount_type
+    decimal discount_value
+    decimal max_discount
+    decimal min_order_amount
+    datetime valid_from
+    datetime valid_to
+    int usage_limit_total
+    bool is_active
+  }
+  SCREEN {
+    int screen_id PK
+    int cinema_id FK
+    varchar screen_name
+    enum screen_type
+    enum screen_status
+  }
+  SEAT {
+    int seat_id PK
+    int screen_id FK
+    int seat_category_id FK
+    varchar row_label
+    tinyint seat_number
+    enum seat_status
+  }
+  SEAT_CATEGORY {
+    int seat_category_id PK
+    varchar category_name
+    decimal price_multiplier
+  }
+  SHOWTIME {
+    int showtime_id PK
+    int movie_id FK
+    int screen_id FK
+    datetime start_time
+    datetime end_time
+    varchar audio_language
+    varchar subtitle_language
+    decimal base_price
+    enum show_status
+    int created_by FK
+  }
+  SHOWTIME_PRICE {
+    int showtime_id PK,FK
+    int seat_category_id PK,FK
+    decimal price
+  }
+  TICKET {
+    int ticket_id PK
+    int booking_seat_id FK
+    char ticket_code
+    enum ticket_status
+    datetime issued_at
+    datetime checked_in_at
+    int checked_in_by_user_id FK
+  }
+  USER_ACCOUNT {
+    int user_id PK
+    enum role
+    int cinema_id FK
+    varchar full_name
+    varchar email
+    varchar phone
+    varchar password_hash
+    enum account_status
+    datetime created_at
+    datetime last_login_at
+  }
+  USER_ACCOUNT |o--o{ AUDIT_LOG : "performs"
+  PROMOTION |o--o{ BOOKING : "discounted by"
+  SHOWTIME ||--o{ BOOKING : "booked for"
+  USER_ACCOUNT |o--o{ BOOKING : "sold by"
+  USER_ACCOUNT |o--o{ BOOKING : "makes"
+  BOOKING ||--o{ BOOKING_SEAT : "includes"
+  SEAT ||--o{ BOOKING_SEAT : "reserved as"
+  SHOWTIME ||--o{ BOOKING_SEAT : "seat allocation for"
+  BOOKING ||--o{ FOOD_ORDER : "has pre-order"
+  GENRE ||--o{ MOVIE_GENRE : "classifies"
+  MOVIE ||--o{ MOVIE_GENRE : "classified as"
+  FOOD_ITEM ||--o{ ORDER_DETAIL : "appears in"
+  FOOD_ORDER ||--o{ ORDER_DETAIL : "contains"
+  BOOKING ||--o{ PAYMENT : "paid by"
+  USER_ACCOUNT |o--o{ PAYMENT : "processed by"
+  MOVIE ||--o{ MOVIE_REVIEW : "reviewed in"
+  USER_ACCOUNT ||--o{ MOVIE_REVIEW : "writes"
+  CINEMA ||--o{ SCREEN : "contains"
+  SEAT_CATEGORY ||--o{ SEAT : "categorises"
+  SCREEN ||--o{ SEAT : "contains"
+  MOVIE ||--o{ SHOWTIME : "scheduled as"
+  SCREEN ||--o{ SHOWTIME : "hosts"
+  USER_ACCOUNT |o--o{ SHOWTIME : "scheduled by"
+  SEAT_CATEGORY ||--o{ SHOWTIME_PRICE : "priced for"
+  SHOWTIME ||--o{ SHOWTIME_PRICE : "priced by"
+  BOOKING_SEAT ||--o{ TICKET : "issues"
+  USER_ACCOUNT |o--o{ TICKET : "checked in by"
+  CINEMA |o--o{ USER_ACCOUNT : "works at"
+</pre></div></section>
+
+<section id="changes"><h2>Original ERD vs enhanced ERD</h2>
+<table><thead><tr><th>Area</th><th>Original (15 entities)</th><th>Enhanced (20 entities)</th></tr></thead><tbody>
+<tr><td><strong>Entities</strong></td><td>15</td><td>20</td></tr><tr><td><strong>Users</strong></td><td>Customer only</td><td>user_account for customers and staff, with roles (customer, admin, manager, box office)</td></tr><tr><td><strong>Movies</strong></td><td>Movie, Genre</td><td>+ movie_review, poster/trailer, director/cast columns</td></tr><tr><td><strong>Cinemas</strong></td><td>Cinema, Screen, Seat</td><td>+ seat_category (Standard/Premium/VIP), screen type (Standard/3D/IMAX/VIP)</td></tr><tr><td><strong>Shows</strong></td><td>One base_price</td><td>+ audio/subtitle language and a price per seat category (showtime_price)</td></tr><tr><td><strong>Booking</strong></td><td>Customer-only online</td><td>+ web and counter sales, walk-in guests, seat holds and expiry, QR ticket check-in</td></tr><tr><td><strong>Payments</strong></td><td>Payment only</td><td>+ refunds, Easypaisa / JazzCash / cash, one promo code per booking</td></tr><tr><td><strong>Food</strong></td><td>Items + orders</td><td>unchanged structure, availability status, order status</td></tr><tr><td><strong>System</strong></td><td>None</td><td>audit_log</td></tr>
+</tbody></table></section>
+
+<section id="users"><h2>1. Users & Security</h2><p class="muted">One account table for customers and staff (role-based), plus an audit trail. Entities from other modules appear with their primary key only.</p>
+<div class="diagram"><pre class="mermaid">erDiagram
+  USER_ACCOUNT {
+    int user_id PK
+    enum role
+    int cinema_id FK
+    varchar full_name
+    varchar email
+    varchar phone
+    varchar password_hash
+    enum account_status
+    datetime created_at
+    datetime last_login_at
+  }
+  AUDIT_LOG {
+    bigint audit_id PK
+    int user_id FK
+    varchar action
+    varchar entity_name
+    varchar entity_id
+    text old_value
+    text new_value
+    varchar ip_address
+    datetime created_at
+  }
+  BOOKING {
+    int booking_id PK
+  }
+  PAYMENT {
+    int payment_id PK
+  }
+  MOVIE_REVIEW {
+    int review_id PK
+  }
+  SHOWTIME {
+    int showtime_id PK
+  }
+  TICKET {
+    int ticket_id PK
+  }
+  CINEMA {
+    int cinema_id PK
+  }
+  USER_ACCOUNT |o--o{ AUDIT_LOG : "performs"
+  USER_ACCOUNT |o--o{ BOOKING : "sold by"
+  USER_ACCOUNT |o--o{ BOOKING : "makes"
+  USER_ACCOUNT |o--o{ PAYMENT : "processed by"
+  USER_ACCOUNT ||--o{ MOVIE_REVIEW : "writes"
+  USER_ACCOUNT |o--o{ SHOWTIME : "scheduled by"
+  USER_ACCOUNT |o--o{ TICKET : "checked in by"
+  CINEMA |o--o{ USER_ACCOUNT : "works at"
+</pre></div></section>
+<section id="catalogue"><h2>2. Movie Catalogue</h2><p class="muted">Movies with genres (many-to-many) and customer reviews. Entities from other modules appear with their primary key only.</p>
+<div class="diagram"><pre class="mermaid">erDiagram
+  GENRE {
+    int genre_id PK
+    varchar genre_name
+  }
+  MOVIE {
+    int movie_id PK
+    varchar title
+    smallint duration_minutes
+    date release_date
+    varchar language
+    enum content_rating
+    varchar director
+    varchar cast_members
+    text synopsis
+    varchar poster_url
+    varchar trailer_url
+    enum movie_status
+    datetime created_at
+  }
+  MOVIE_GENRE {
+    int movie_id PK,FK
+    int genre_id PK,FK
+  }
+  MOVIE_REVIEW {
+    int review_id PK
+    int movie_id FK
+    int user_id FK
+    tinyint rating
+    varchar review_text
+    datetime created_at
+  }
+  USER_ACCOUNT {
+    int user_id PK
+  }
+  SHOWTIME {
+    int showtime_id PK
+  }
+  GENRE ||--o{ MOVIE_GENRE : "classifies"
+  MOVIE ||--o{ MOVIE_GENRE : "classified as"
+  MOVIE ||--o{ MOVIE_REVIEW : "reviewed in"
+  USER_ACCOUNT ||--o{ MOVIE_REVIEW : "writes"
+  MOVIE ||--o{ SHOWTIME : "scheduled as"
+</pre></div></section>
+<section id="infra"><h2>3. Cinema Infrastructure</h2><p class="muted">Branches, screens and seats with seat categories. Entities from other modules appear with their primary key only.</p>
+<div class="diagram"><pre class="mermaid">erDiagram
+  CINEMA {
+    int cinema_id PK
+    varchar cinema_name
+    varchar city
+    varchar address
+    varchar contact_number
+    enum cinema_status
+  }
+  SCREEN {
+    int screen_id PK
+    int cinema_id FK
+    varchar screen_name
+    enum screen_type
+    enum screen_status
+  }
+  SEAT_CATEGORY {
+    int seat_category_id PK
+    varchar category_name
+    decimal price_multiplier
+  }
+  SEAT {
+    int seat_id PK
+    int screen_id FK
+    int seat_category_id FK
+    varchar row_label
+    tinyint seat_number
+    enum seat_status
+  }
+  BOOKING_SEAT {
+    int booking_seat_id PK
+  }
+  SHOWTIME {
+    int showtime_id PK
+  }
+  SHOWTIME_PRICE {
+    int showtime_id PK,FK
+    int seat_category_id PK,FK
+  }
+  USER_ACCOUNT {
+    int user_id PK
+  }
+  SEAT ||--o{ BOOKING_SEAT : "reserved as"
+  CINEMA ||--o{ SCREEN : "contains"
+  SEAT_CATEGORY ||--o{ SEAT : "categorises"
+  SCREEN ||--o{ SEAT : "contains"
+  SCREEN ||--o{ SHOWTIME : "hosts"
+  SEAT_CATEGORY ||--o{ SHOWTIME_PRICE : "priced for"
+  CINEMA |o--o{ USER_ACCOUNT : "works at"
+</pre></div></section>
+<section id="scheduling"><h2>4. Scheduling & Pricing</h2><p class="muted">Showtimes and the price of each seat category per show. Entities from other modules appear with their primary key only.</p>
+<div class="diagram"><pre class="mermaid">erDiagram
+  SHOWTIME {
+    int showtime_id PK
+    int movie_id FK
+    int screen_id FK
+    datetime start_time
+    datetime end_time
+    varchar audio_language
+    varchar subtitle_language
+    decimal base_price
+    enum show_status
+    int created_by FK
+  }
+  SHOWTIME_PRICE {
+    int showtime_id PK,FK
+    int seat_category_id PK,FK
+    decimal price
+  }
+  BOOKING {
+    int booking_id PK
+  }
+  BOOKING_SEAT {
+    int booking_seat_id PK
+  }
+  MOVIE {
+    int movie_id PK
+  }
+  SCREEN {
+    int screen_id PK
+  }
+  USER_ACCOUNT {
+    int user_id PK
+  }
+  SEAT_CATEGORY {
+    int seat_category_id PK
+  }
+  SHOWTIME ||--o{ BOOKING : "booked for"
+  SHOWTIME ||--o{ BOOKING_SEAT : "seat allocation for"
+  MOVIE ||--o{ SHOWTIME : "scheduled as"
+  SCREEN ||--o{ SHOWTIME : "hosts"
+  USER_ACCOUNT |o--o{ SHOWTIME : "scheduled by"
+  SEAT_CATEGORY ||--o{ SHOWTIME_PRICE : "priced for"
+  SHOWTIME ||--o{ SHOWTIME_PRICE : "priced by"
+</pre></div></section>
+<section id="booking"><h2>5. Booking, Payment & Promotions</h2><p class="muted">Bookings (web or counter) with seat reservations, tickets, payments/refunds and promo codes. Entities from other modules appear with their primary key only.</p>
+<div class="diagram"><pre class="mermaid">erDiagram
+  BOOKING {
+    int booking_id PK
+    char booking_reference
+    int user_id FK
+    varchar guest_phone
+    int showtime_id FK
+    enum booking_channel
+    int sold_by_user_id FK
+    int promotion_id FK
+    decimal ticket_subtotal
+    decimal food_subtotal
+    decimal discount_amount
+    decimal total_amount
+    enum booking_status
+    datetime booking_time
+    datetime payment_deadline
+    datetime cancelled_at
+  }
+  BOOKING_SEAT {
+    int booking_seat_id PK
+    int booking_id FK
+    int showtime_id FK
+    int screen_id FK
+    int seat_id FK
+    decimal seat_price
+    enum seat_status
+    datetime hold_expires_at
+    tinyint active_slot "derived"
+  }
+  TICKET {
+    int ticket_id PK
+    int booking_seat_id FK
+    char ticket_code
+    enum ticket_status
+    datetime issued_at
+    datetime checked_in_at
+    int checked_in_by_user_id FK
+  }
+  PAYMENT {
+    int payment_id PK
+    int booking_id FK
+    enum payment_type
+    decimal amount
+    enum payment_method
+    enum payment_status
+    varchar transaction_reference
+    int processed_by_user_id FK
+    datetime created_at
+    datetime paid_at
+  }
+  PROMOTION {
+    int promotion_id PK
+    varchar promo_code
+    varchar description
+    enum discount_type
+    decimal discount_value
+    decimal max_discount
+    decimal min_order_amount
+    datetime valid_from
+    datetime valid_to
+    int usage_limit_total
+    bool is_active
+  }
+  SHOWTIME {
+    int showtime_id PK
+  }
+  USER_ACCOUNT {
+    int user_id PK
+  }
+  SEAT {
+    int seat_id PK
+  }
+  FOOD_ORDER {
+    int food_order_id PK
+  }
+  PROMOTION |o--o{ BOOKING : "discounted by"
+  SHOWTIME ||--o{ BOOKING : "booked for"
+  USER_ACCOUNT |o--o{ BOOKING : "sold by"
+  USER_ACCOUNT |o--o{ BOOKING : "makes"
+  BOOKING ||--o{ BOOKING_SEAT : "includes"
+  SEAT ||--o{ BOOKING_SEAT : "reserved as"
+  SHOWTIME ||--o{ BOOKING_SEAT : "seat allocation for"
+  BOOKING ||--o{ FOOD_ORDER : "has pre-order"
+  BOOKING ||--o{ PAYMENT : "paid by"
+  USER_ACCOUNT |o--o{ PAYMENT : "processed by"
+  BOOKING_SEAT ||--o{ TICKET : "issues"
+  USER_ACCOUNT |o--o{ TICKET : "checked in by"
+</pre></div></section>
+<section id="food"><h2>6. Food & Beverage</h2><p class="muted">Menu items and food pre-orders attached to a booking. Entities from other modules appear with their primary key only.</p>
+<div class="diagram"><pre class="mermaid">erDiagram
+  FOOD_ITEM {
+    int food_item_id PK
+    varchar item_name
+    enum category
+    varchar description
+    decimal current_price
+    enum availability_status
+  }
+  FOOD_ORDER {
+    int food_order_id PK
+    int booking_id FK
+    datetime order_time
+    enum order_status
+    decimal total_amount
+  }
+  ORDER_DETAIL {
+    int order_detail_id PK
+    int food_order_id FK
+    int food_item_id FK
+    smallint quantity
+    decimal unit_price
+    decimal line_total "derived"
+  }
+  BOOKING {
+    int booking_id PK
+  }
+  BOOKING ||--o{ FOOD_ORDER : "has pre-order"
+  FOOD_ITEM ||--o{ ORDER_DETAIL : "appears in"
+  FOOD_ORDER ||--o{ ORDER_DETAIL : "contains"
+</pre></div></section>
+
+<section id="rules"><h2>Business rules &amp; integrity constraints</h2>
+<table><thead><tr><th>Rule</th><th>How it is enforced</th></tr></thead><tbody>
+<tr><td><strong>Seat belongs to the show's screen</strong></td><td>booking_seat stores (booking_id, showtime_id, screen_id, seat_id) with composite FKs to booking(booking_id, showtime_id), showtime(showtime_id, screen_id) and seat(seat_id, screen_id). A seat from another screen cannot be booked.</td></tr><tr><td><strong>No double booking, history kept</strong></td><td>booking_seat.active_slot is 1 for HELD/CONFIRMED rows and NULL otherwise; UNIQUE(showtime_id, seat_id, active_slot) allows one active reservation per seat per show, while cancelled rows stay for history and the seat can be re-booked.</td></tr><tr><td><strong>Seat holds</strong></td><td>Seats are HELD (hold_expires_at) while the customer pays. PENDING bookings past payment_deadline are expired by sp_expire_unpaid_bookings() and their seats released.</td></tr><tr><td><strong>No overlapping shows</strong></td><td>Triggers on showtime reject any non-cancelled show that overlaps another show on the same screen.</td></tr><tr><td><strong>One ticket per seat</strong></td><td>ticket.booking_seat_id is FK + UNIQUE and ticket_code is UNIQUE (used in the QR code). Tickets are issued only after a SUCCESS payment and scanned at the door (checked_in_at / checked_in_by_user_id).</td></tr><tr><td><strong>Historical prices</strong></td><td>booking_seat.seat_price and order_detail.unit_price are snapshots; showtime_price holds the price per seat category for each show; food_item.current_price is only today's menu price.</td></tr><tr><td><strong>Web and counter sales</strong></td><td>booking_channel is WEB or COUNTER. Walk-in customers have user_id NULL with guest_phone; counter sales record sold_by_user_id.</td></tr><tr><td><strong>Payments and refunds</strong></td><td>payment.payment_type is PAYMENT or REFUND. A booking can have several attempts; only SUCCESS rows count. Net revenue = SUCCESS payments - SUCCESS refunds.</td></tr><tr><td><strong>Promotions</strong></td><td>A booking may use at most one promotion (booking.promotion_id) and stores the discount_amount; validity dates and usage limits are checked by the application inside the booking transaction.</td></tr><tr><td><strong>Roles</strong></td><td>user_account.role (CUSTOMER, ADMIN, MANAGER, BOX_OFFICE) replaces separate customer/staff tables; staff are linked to a branch via cinema_id (CHECK: customers have none).</td></tr><tr><td><strong>Audit</strong></td><td>audit_log records who changed what, with old and new values.</td></tr><tr><td><strong>Derived values not stored</strong></td><td>Screen capacity = COUNT of active seats. order_detail.line_total is a generated column (quantity x unit_price).</td></tr>
+</tbody></table></section>
+
+<section id="cardinality"><h2>Relationship cardinalities</h2><table><thead><tr><th>Parent</th><th>Child</th><th>Cardinality (parent : child)</th><th>FK column(s)</th><th>Meaning</th></tr></thead><tbody><tr><td>booking</td><td>booking_seat</td><td>1 : 0..*</td><td>booking_id, showtime_id</td><td>includes</td></tr><tr><td>booking</td><td>food_order</td><td>1 : 0..*</td><td>booking_id</td><td>has pre-order</td></tr><tr><td>booking</td><td>payment</td><td>1 : 0..*</td><td>booking_id</td><td>paid by</td></tr><tr><td>booking_seat</td><td>ticket</td><td>1 : 0..*</td><td>booking_seat_id</td><td>issues</td></tr><tr><td>cinema</td><td>screen</td><td>1 : 0..*</td><td>cinema_id</td><td>contains</td></tr><tr><td>cinema</td><td>user_account</td><td>0..1 : 0..*</td><td>cinema_id</td><td>works at</td></tr><tr><td>food_item</td><td>order_detail</td><td>1 : 0..*</td><td>food_item_id</td><td>appears in</td></tr><tr><td>food_order</td><td>order_detail</td><td>1 : 0..*</td><td>food_order_id</td><td>contains</td></tr><tr><td>genre</td><td>movie_genre</td><td>1 : 0..*</td><td>genre_id</td><td>classifies</td></tr><tr><td>movie</td><td>movie_genre</td><td>1 : 0..*</td><td>movie_id</td><td>classified as</td></tr><tr><td>movie</td><td>movie_review</td><td>1 : 0..*</td><td>movie_id</td><td>reviewed in</td></tr><tr><td>movie</td><td>showtime</td><td>1 : 0..*</td><td>movie_id</td><td>scheduled as</td></tr><tr><td>promotion</td><td>booking</td><td>0..1 : 0..*</td><td>promotion_id</td><td>discounted by</td></tr><tr><td>screen</td><td>seat</td><td>1 : 0..*</td><td>screen_id</td><td>contains</td></tr><tr><td>screen</td><td>showtime</td><td>1 : 0..*</td><td>screen_id</td><td>hosts</td></tr><tr><td>seat</td><td>booking_seat</td><td>1 : 0..*</td><td>seat_id, screen_id</td><td>reserved as</td></tr><tr><td>seat_category</td><td>seat</td><td>1 : 0..*</td><td>seat_category_id</td><td>categorises</td></tr><tr><td>seat_category</td><td>showtime_price</td><td>1 : 0..*</td><td>seat_category_id</td><td>priced for</td></tr><tr><td>showtime</td><td>booking</td><td>1 : 0..*</td><td>showtime_id</td><td>booked for</td></tr><tr><td>showtime</td><td>booking_seat</td><td>1 : 0..*</td><td>showtime_id, screen_id</td><td>seat allocation for</td></tr><tr><td>showtime</td><td>showtime_price</td><td>1 : 0..*</td><td>showtime_id</td><td>priced by</td></tr><tr><td>user_account</td><td>audit_log</td><td>0..1 : 0..*</td><td>user_id</td><td>performs</td></tr><tr><td>user_account</td><td>booking</td><td>0..1 : 0..*</td><td>sold_by_user_id</td><td>sold by</td></tr><tr><td>user_account</td><td>booking</td><td>0..1 : 0..*</td><td>user_id</td><td>makes</td></tr><tr><td>user_account</td><td>movie_review</td><td>1 : 0..*</td><td>user_id</td><td>writes</td></tr><tr><td>user_account</td><td>payment</td><td>0..1 : 0..*</td><td>processed_by_user_id</td><td>processed by</td></tr><tr><td>user_account</td><td>showtime</td><td>0..1 : 0..*</td><td>created_by</td><td>scheduled by</td></tr><tr><td>user_account</td><td>ticket</td><td>0..1 : 0..*</td><td>checked_in_by_user_id</td><td>checked in by</td></tr></tbody></table></section>
+
+<section id="dictionary"><h2>Data dictionary</h2>
+<h3>1. Users & Security</h3><details><summary><strong>user_account</strong> <span class="muted">(10 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>user_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>role</code></td><td>enum('CUSTOMER','ADMIN','MANAGER','BOX_OFFICE')</td><td></td><td>no</td><td> default 'CUSTOMER'</td></tr><tr><td><code>cinema_id</code></td><td>int(10) unsigned</td><td>FK</td><td>yes</td><td>→ cinema default NULL</td></tr><tr><td><code>full_name</code></td><td>varchar(120)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>email</code></td><td>varchar(150)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>phone</code></td><td>varchar(30)</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>password_hash</code></td><td>varchar(255)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>account_status</code></td><td>enum('ACTIVE','SUSPENDED')</td><td></td><td>no</td><td> default 'ACTIVE'</td></tr><tr><td><code>created_at</code></td><td>datetime</td><td></td><td>no</td><td> default current_timestamp()</td></tr><tr><td><code>last_login_at</code></td><td>datetime</td><td></td><td>yes</td><td> default NULL</td></tr></tbody></table></details>
+<details><summary><strong>audit_log</strong> <span class="muted">(9 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>audit_id</code></td><td>bigint(20) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>user_id</code></td><td>int(10) unsigned</td><td>FK</td><td>yes</td><td>→ user_account default NULL</td></tr><tr><td><code>action</code></td><td>varchar(40)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>entity_name</code></td><td>varchar(60)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>entity_id</code></td><td>varchar(40)</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>old_value</code></td><td>text</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>new_value</code></td><td>text</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>ip_address</code></td><td>varchar(45)</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>created_at</code></td><td>datetime</td><td></td><td>no</td><td> default current_timestamp()</td></tr></tbody></table></details>
+<h3>2. Movie Catalogue</h3><details><summary><strong>genre</strong> <span class="muted">(2 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>genre_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>genre_name</code></td><td>varchar(50)</td><td></td><td>no</td><td> default NULL</td></tr></tbody></table></details>
+<details><summary><strong>movie</strong> <span class="muted">(13 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>movie_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>title</code></td><td>varchar(200)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>duration_minutes</code></td><td>smallint(5) unsigned</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>release_date</code></td><td>date</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>language</code></td><td>varchar(30)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>content_rating</code></td><td>enum('G','PG','PG-13','R')</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>director</code></td><td>varchar(120)</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>cast_members</code></td><td>varchar(500)</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>synopsis</code></td><td>text</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>poster_url</code></td><td>varchar(500)</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>trailer_url</code></td><td>varchar(500)</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>movie_status</code></td><td>enum('COMING_SOON','NOW_SHOWING','ARCHIVED')</td><td></td><td>no</td><td> default 'COMING_SOON'</td></tr><tr><td><code>created_at</code></td><td>datetime</td><td></td><td>no</td><td> default current_timestamp()</td></tr></tbody></table></details>
+<details><summary><strong>movie_genre</strong> <span class="muted">(2 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>movie_id</code></td><td>int(10) unsigned</td><td>PK, FK</td><td>no</td><td>→ movie default NULL</td></tr><tr><td><code>genre_id</code></td><td>int(10) unsigned</td><td>PK, FK</td><td>no</td><td>→ genre default NULL</td></tr></tbody></table></details>
+<details><summary><strong>movie_review</strong> <span class="muted">(6 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>review_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>movie_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ movie default NULL</td></tr><tr><td><code>user_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ user_account default NULL</td></tr><tr><td><code>rating</code></td><td>tinyint(3) unsigned</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>review_text</code></td><td>varchar(1000)</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>created_at</code></td><td>datetime</td><td></td><td>no</td><td> default current_timestamp()</td></tr></tbody></table></details>
+<h3>3. Cinema Infrastructure</h3><details><summary><strong>cinema</strong> <span class="muted">(6 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>cinema_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>cinema_name</code></td><td>varchar(120)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>city</code></td><td>varchar(80)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>address</code></td><td>varchar(255)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>contact_number</code></td><td>varchar(30)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>cinema_status</code></td><td>enum('ACTIVE','CLOSED')</td><td></td><td>no</td><td> default 'ACTIVE'</td></tr></tbody></table></details>
+<details><summary><strong>screen</strong> <span class="muted">(5 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>screen_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>cinema_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ cinema default NULL</td></tr><tr><td><code>screen_name</code></td><td>varchar(60)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>screen_type</code></td><td>enum('STANDARD','3D','IMAX','VIP')</td><td></td><td>no</td><td> default 'STANDARD'</td></tr><tr><td><code>screen_status</code></td><td>enum('ACTIVE','MAINTENANCE','CLOSED')</td><td></td><td>no</td><td> default 'ACTIVE'</td></tr></tbody></table></details>
+<details><summary><strong>seat_category</strong> <span class="muted">(3 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>seat_category_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>category_name</code></td><td>varchar(40)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>price_multiplier</code></td><td>decimal(4,2)</td><td></td><td>no</td><td> default 1.00</td></tr></tbody></table></details>
+<details><summary><strong>seat</strong> <span class="muted">(6 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>seat_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>screen_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ screen default NULL</td></tr><tr><td><code>seat_category_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ seat_category default NULL</td></tr><tr><td><code>row_label</code></td><td>varchar(3)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>seat_number</code></td><td>tinyint(3) unsigned</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>seat_status</code></td><td>enum('ACTIVE','BROKEN')</td><td></td><td>no</td><td> default 'ACTIVE'</td></tr></tbody></table></details>
+<h3>4. Scheduling & Pricing</h3><details><summary><strong>showtime</strong> <span class="muted">(10 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>showtime_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>movie_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ movie default NULL</td></tr><tr><td><code>screen_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ screen default NULL</td></tr><tr><td><code>start_time</code></td><td>datetime</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>end_time</code></td><td>datetime</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>audio_language</code></td><td>varchar(30)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>subtitle_language</code></td><td>varchar(30)</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>base_price</code></td><td>decimal(10,2)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>show_status</code></td><td>enum('DRAFT','ON_SALE','SOLD_OUT','CANCELLED','COMPLETED')</td><td></td><td>no</td><td> default 'DRAFT'</td></tr><tr><td><code>created_by</code></td><td>int(10) unsigned</td><td>FK</td><td>yes</td><td>→ user_account default NULL</td></tr></tbody></table></details>
+<details><summary><strong>showtime_price</strong> <span class="muted">(3 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>showtime_id</code></td><td>int(10) unsigned</td><td>PK, FK</td><td>no</td><td>→ showtime default NULL</td></tr><tr><td><code>seat_category_id</code></td><td>int(10) unsigned</td><td>PK, FK</td><td>no</td><td>→ seat_category default NULL</td></tr><tr><td><code>price</code></td><td>decimal(10,2)</td><td></td><td>no</td><td> default NULL</td></tr></tbody></table></details>
+<h3>5. Booking, Payment & Promotions</h3><details><summary><strong>booking</strong> <span class="muted">(16 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>booking_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>booking_reference</code></td><td>char(10)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>user_id</code></td><td>int(10) unsigned</td><td>FK</td><td>yes</td><td>→ user_account default NULL</td></tr><tr><td><code>guest_phone</code></td><td>varchar(30)</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>showtime_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ showtime default NULL</td></tr><tr><td><code>booking_channel</code></td><td>enum('WEB','COUNTER')</td><td></td><td>no</td><td> default 'WEB'</td></tr><tr><td><code>sold_by_user_id</code></td><td>int(10) unsigned</td><td>FK</td><td>yes</td><td>→ user_account default NULL</td></tr><tr><td><code>promotion_id</code></td><td>int(10) unsigned</td><td>FK</td><td>yes</td><td>→ promotion default NULL</td></tr><tr><td><code>ticket_subtotal</code></td><td>decimal(10,2)</td><td></td><td>no</td><td> default 0.00</td></tr><tr><td><code>food_subtotal</code></td><td>decimal(10,2)</td><td></td><td>no</td><td> default 0.00</td></tr><tr><td><code>discount_amount</code></td><td>decimal(10,2)</td><td></td><td>no</td><td> default 0.00</td></tr><tr><td><code>total_amount</code></td><td>decimal(10,2)</td><td></td><td>no</td><td> default 0.00</td></tr><tr><td><code>booking_status</code></td><td>enum('PENDING','CONFIRMED','CANCELLED','EXPIRED')</td><td></td><td>no</td><td> default 'PENDING'</td></tr><tr><td><code>booking_time</code></td><td>datetime</td><td></td><td>no</td><td> default current_timestamp()</td></tr><tr><td><code>payment_deadline</code></td><td>datetime</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>cancelled_at</code></td><td>datetime</td><td></td><td>yes</td><td> default NULL</td></tr></tbody></table></details>
+<details><summary><strong>booking_seat</strong> <span class="muted">(9 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>booking_seat_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>booking_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ booking default NULL</td></tr><tr><td><code>showtime_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ booking default NULL</td></tr><tr><td><code>screen_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ seat default NULL</td></tr><tr><td><code>seat_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ seat default NULL</td></tr><tr><td><code>seat_price</code></td><td>decimal(10,2)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>seat_status</code></td><td>enum('HELD','CONFIRMED','CANCELLED','EXPIRED')</td><td></td><td>no</td><td> default 'HELD'</td></tr><tr><td><code>hold_expires_at</code></td><td>datetime</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>active_slot</code></td><td>tinyint(4)</td><td></td><td>yes</td><td> derived, default NULL</td></tr></tbody></table></details>
+<details><summary><strong>ticket</strong> <span class="muted">(7 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>ticket_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>booking_seat_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ booking_seat default NULL</td></tr><tr><td><code>ticket_code</code></td><td>char(16)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>ticket_status</code></td><td>enum('VALID','USED','CANCELLED')</td><td></td><td>no</td><td> default 'VALID'</td></tr><tr><td><code>issued_at</code></td><td>datetime</td><td></td><td>no</td><td> default current_timestamp()</td></tr><tr><td><code>checked_in_at</code></td><td>datetime</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>checked_in_by_user_id</code></td><td>int(10) unsigned</td><td>FK</td><td>yes</td><td>→ user_account default NULL</td></tr></tbody></table></details>
+<details><summary><strong>payment</strong> <span class="muted">(10 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>payment_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>booking_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ booking default NULL</td></tr><tr><td><code>payment_type</code></td><td>enum('PAYMENT','REFUND')</td><td></td><td>no</td><td> default 'PAYMENT'</td></tr><tr><td><code>amount</code></td><td>decimal(10,2)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>payment_method</code></td><td>enum('CARD','EASYPAISA','JAZZCASH','CASH')</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>payment_status</code></td><td>enum('PENDING','SUCCESS','FAILED')</td><td></td><td>no</td><td> default 'PENDING'</td></tr><tr><td><code>transaction_reference</code></td><td>varchar(80)</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>processed_by_user_id</code></td><td>int(10) unsigned</td><td>FK</td><td>yes</td><td>→ user_account default NULL</td></tr><tr><td><code>created_at</code></td><td>datetime</td><td></td><td>no</td><td> default current_timestamp()</td></tr><tr><td><code>paid_at</code></td><td>datetime</td><td></td><td>yes</td><td> default NULL</td></tr></tbody></table></details>
+<details><summary><strong>promotion</strong> <span class="muted">(11 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>promotion_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>promo_code</code></td><td>varchar(30)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>description</code></td><td>varchar(255)</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>discount_type</code></td><td>enum('PERCENT','FLAT')</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>discount_value</code></td><td>decimal(10,2)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>max_discount</code></td><td>decimal(10,2)</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>min_order_amount</code></td><td>decimal(10,2)</td><td></td><td>no</td><td> default 0.00</td></tr><tr><td><code>valid_from</code></td><td>datetime</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>valid_to</code></td><td>datetime</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>usage_limit_total</code></td><td>int(10) unsigned</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>is_active</code></td><td>tinyint(1)</td><td></td><td>no</td><td> default 1</td></tr></tbody></table></details>
+<h3>6. Food & Beverage</h3><details><summary><strong>food_item</strong> <span class="muted">(6 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>food_item_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>item_name</code></td><td>varchar(120)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>category</code></td><td>enum('SNACKS','MEALS','DRINKS','DESSERTS','COMBOS')</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>description</code></td><td>varchar(255)</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>current_price</code></td><td>decimal(10,2)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>availability_status</code></td><td>enum('AVAILABLE','UNAVAILABLE')</td><td></td><td>no</td><td> default 'AVAILABLE'</td></tr></tbody></table></details>
+<details><summary><strong>food_order</strong> <span class="muted">(5 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>food_order_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>booking_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ booking default NULL</td></tr><tr><td><code>order_time</code></td><td>datetime</td><td></td><td>no</td><td> default current_timestamp()</td></tr><tr><td><code>order_status</code></td><td>enum('PLACED','PREPARING','READY','COLLECTED','CANCELLED')</td><td></td><td>no</td><td> default 'PLACED'</td></tr><tr><td><code>total_amount</code></td><td>decimal(10,2)</td><td></td><td>no</td><td> default 0.00</td></tr></tbody></table></details>
+<details><summary><strong>order_detail</strong> <span class="muted">(6 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>order_detail_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>food_order_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ food_order default NULL</td></tr><tr><td><code>food_item_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ food_item default NULL</td></tr><tr><td><code>quantity</code></td><td>smallint(5) unsigned</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>unit_price</code></td><td>decimal(10,2)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>line_total</code></td><td>decimal(12,2)</td><td></td><td>yes</td><td> derived, default NULL</td></tr></tbody></table></details></section>
+
+<script src="lib/mermaid.min.js"></script>
+<script>
+ mermaid.initialize({startOnLoad:true, theme:"default", er:{useMaxWidth:false, layoutDirection:"TB"}, securityLevel:"loose", maxTextSize:900000});
+</script>
+</body></html>

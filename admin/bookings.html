@@ -12,6 +12,8 @@
       <div class="flex wrap mb">
         <input id="search" placeholder="Search by ID or customer..." style="max-width:280px">
         <select id="f-status" style="max-width:180px"><option value="">All statuses</option><option>CONFIRMED</option><option>PENDING</option><option>CANCELLED</option></select>
+        <span class="badge info" id="result-count">0 results</span>
+        <button class="btn small secondary" id="clear-filters">Clear filters</button>
       </div>
       <div class="table-wrap"><table>
         <thead><tr><th>Booking</th><th>Customer</th><th>Movie / Show</th><th>Seats</th><th>Total</th><th>Payment</th><th>Status</th><th></th></tr></thead>
@@ -47,8 +49,11 @@
       $$("[data-cancel]").forEach(b => b.onclick = () => {
         if (!confirm("Cancel booking and refund payment? Seats will be released.")) return;
         const bk = list.find(x => x.id === b.dataset.cancel);
-        bk.status = "CANCELLED"; bk.payment.status = "REFUNDED"; draw(); toast("Booking cancelled — seats released");
+        bk.status = "CANCELLED"; bk.payment.status = "REFUNDED";
+        updateBookingStatus(bk.id, "CANCELLED", "REFUNDED");
+        draw(); toast("Booking cancelled — seats released", "info");
       });
+      $("#result-count").textContent = `${list.filter(b => (b.id + b.customer.name).toLowerCase().includes(q) && (!st || b.status === st)).length} results`;
     }
     function details(id) {
       const b = list.find(x => x.id === id), show = byId(SHOWS, b.showId), m = byId(MOVIES, show.movieId);
@@ -70,6 +75,7 @@
       openModal("modal");
     }
     $("#search").oninput = draw; $("#f-status").onchange = draw;
+    $("#clear-filters").onclick = () => { $("#search").value = ""; $("#f-status").value = ""; draw(); }
     draw();
   </script>
 </body>

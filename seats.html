@@ -71,7 +71,8 @@
           const cls = ["seat", s.type.toLowerCase()];
           if (taken.includes(s.id)) cls.push("taken");
           else if (selected.includes(s.id)) cls.push("selected");
-          html += `<button class="${cls.join(" ")}" data-id="${s.id}" title="${s.id} • ${s.type} • ${money(seatPrice(show, s.type))}">${s.number}</button>`;
+          const pressed = selected.includes(s.id) ? ' aria-pressed="true"' : ' aria-pressed="false"';
+          html += `<button type="button" class="${cls.join(" ")}" data-id="${s.id}" title="${s.id} • ${s.type} • ${money(seatPrice(show, s.type))}"${taken.includes(s.id) ? ' disabled' : ''}${pressed}>${s.number}</button>`;
           if (s.number === half) html += '<div class="aisle"></div>';
         });
         html += `<div class="row-label">${label}</div></div>`;
@@ -82,7 +83,7 @@
     }
     function toggle(id) {
       if (selected.includes(id)) selected = selected.filter(x => x !== id);
-      else if (selected.length >= MAX) return toast("Maximum " + MAX + " seats per booking");
+      else if (selected.length >= MAX) return toast("Maximum " + MAX + " seats per booking", "warn");
       else selected.push(id);
       draw();
     }
@@ -90,12 +91,15 @@
       let total = 0;
       $("#s-seats").innerHTML = selected.length ? selected.map(id => {
         const s = seats.find(x => x.id === id), p = seatPrice(show, s.type); total += p;
-        return `<div class="row"><span><span class="seat-chip">${id}</span> ${s.type}</span><span>${money(p)}</span></div>`;
+        return `<div class="row"><span><span class="seat-chip">${escapeHTML(id)}</span> ${escapeHTML(s.type)}</span><span>${money(p)}</span></div>`;
       }).join("") : '<div class="muted small">No seats selected yet.</div>';
       $("#s-total").textContent = money(total);
       $("#continue").classList.toggle("disabled", !selected.length);
+      $("#continue").setAttribute("aria-disabled", String(!selected.length));
+      $("#continue").innerHTML = selected.length ? `Continue with ${selected.length} seat${selected.length === 1 ? "" : "s"} →` : "Select a seat to continue";
     }
-    $("#continue").addEventListener("click", () => {
+    $("#continue").addEventListener("click", e => {
+      if (!selected.length) { e.preventDefault(); toast("Please select at least one seat", "warn"); return; }
       setCart({ showId: show.id, seats: selected, food: (cart && cart.showId === show.id ? cart.food : {}) || {} });
     });
     draw();

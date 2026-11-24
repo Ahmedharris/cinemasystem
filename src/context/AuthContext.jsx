@@ -1,85 +1,25 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { CUSTOMERS } from '../data/initialData';
+import { createContext, useContext } from 'react';
+import { auth } from '../lib/db';
+import { discardCart } from '../lib/cart';
+import { useDb } from '../hooks/useDb';
 
-const AuthContext = createContext(null);
+const Ctx = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem('cms_user');
-      return saved ? JSON.parse(saved) : CUSTOMERS[0]; // Default to Ali Raza for pleasant out-of-the-box demo
-    } catch (e) {
-      return CUSTOMERS[0];
-    }
-  });
-
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem('cms_user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('cms_user');
-    }
-  }, [user]);
-
-  const login = (email, password) => {
-    // Look up customer in existing CUSTOMERS or created in local storage
-    const customList = JSON.parse(localStorage.getItem('cms_customers') || '[]');
-    const allUsers = [...CUSTOMERS, ...customList];
-    const found = allUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-
-    if (found) {
-      setUser(found);
-      return { success: true, user: found };
-    }
-
-    // Auto-create demo user if not found
-    const newUser = {
-      id: Date.now(),
-      name: email.split('@')[0].replace(/[._]/g, ' '),
-      email,
-      phone: '0300-0000000',
-      role: email.includes('admin') ? 'admin' : 'customer',
-      joined: new Date().toISOString().split('T')[0]
-    };
-    setUser(newUser);
-    return { success: true, user: newUser };
+  useDb(); // re-render when the session or profile changes
+  const user = auth.current();
+  const value = {
+    user,
+    isStaff: !!user && user.role !== 'CUSTOMER',
+    isAdmin: !!user && user.role === 'ADMIN',
+    /** cinema_id the staff member is limited to (null = all cinemas) */
+    cinemaScope: user && user.role !== 'ADMIN' && user.role !== 'CUSTOMER' ? user.cinema_id : null,
+    login: auth.login,
+    register: auth.register,
+    logout: () => { discardCart(); auth.logout(); },
+    updateProfile: (data) => auth.updateProfile(user.user_id, data),
+    changePassword: (cur, next) => auth.changePassword(user.user_id, cur, next)
   };
-
-  const register = ({ name, email, phone }) => {
-    const newUser = {
-      id: Date.now(),
-      name,
-      email,
-      phone,
-      role: email.includes('admin') ? 'admin' : 'customer',
-      joined: new Date().toISOString().split('T')[0]
-    };
-    const customList = JSON.parse(localStorage.getItem('cms_customers') || '[]');
-    customList.push(newUser);
-    localStorage.setItem('cms_customers', JSON.stringify(customList));
-    setUser(newUser);
-    return { success: true, user: newUser };
-  };
-
-  const logout = () => {
-    setUser(null);
-  };
-
-  const switchUser = (account) => {
-    setUser(account);
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, login, register, logout, switchUser, isAdmin: user?.role === 'admin' }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-}
+export const useAuth = () => useContext(Ctx);

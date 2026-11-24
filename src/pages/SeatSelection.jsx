@@ -1,292 +1,143 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import {
-  Armchair,
-  Clock,
-  Sparkles,
-  ArrowRight,
-  ArrowLeft,
-  AlertCircle,
-  ShieldCheck,
-  Check
-} from 'lucide-react';
-import { useCinema } from '../context/CinemaContext';
-import { useCart } from '../context/CartContext';
-import { CURRENCY, getScreenSeats } from '../data/initialData';
-import BookingStepper from '../components/BookingStepper';
+import { useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Clock, MapPin, Calendar, Sparkles, Timer, ArrowRight, Info, Trash2, Film } from 'lucide-react';
+import { useDb, useDocumentTitle, useCountdown, fmtClock } from '../hooks/useDb';
+import { q, isBookable, createHold, replaceHold, releaseHold, takenSeats, MAX_SEATS, HOLD_MINUTES, parseDT } from '../lib/db';
+import { pendingBooking, setCartId } from '../lib/cart';
+import { findBestSeats } from '../lib/seatpick';
+import { useAuth } from '../context/AuthContext';
+import { useUI } from '../context/UIContext';
+import SeatMap, { SeatLegend } from '../components/SeatMap';
+import Stepper from '../components/Stepper';
+import Poster from '../components/Poster';
+import { Badge, Callout, EmptyState } from '../components/ui/Misc';
+import { money, dateLong, time12, fmtDuration, SCREEN_TYPE_LABEL } from '../lib/format';
 
 export default function SeatSelection() {
+  useDb();
   const { showId } = useParams();
-  const navigate = useNavigate();
-  const { shows, movies, screens, cinemas, calculateSeatPrice, getOccupiedSeats } = useCinema();
-  const { cart, selectSeats, formatTimer, timeLeft } = useCart();
-
-  const show = shows.find(s => String(s.id) === String(showId)) || shows[0];
-  const movie = movies.find(m => m.id === show?.movieId);
-  const screen = screens.find(sc => sc.id === show?.screenId);
-  const cinema = cinemas.find(c => c.id === screen?.cinemaId);
-
-  const occupiedSeats = getOccupiedSeats(show.id);
-  const allSeats = getScreenSeats(screen);
-
-  // Initial selected seats (restore from cart if returning to this step for same show)
-  const [selectedSeatIds, setSelectedSeatIds] = useState(() => {
-    if (cart.showId === show.id && cart.seats?.length) {
-      return cart.seats.map(s => s.id);
-    }
-    return [];
+  const loc = useLocation();
+  const nav = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useUI();
+  const full = q.showFull(showId);
+  const mine = full ? pendingBooking(user ? user.user_id : null) : null;
+  const mineHere = mine && full && mine.showtime_id === full.show.showtime_id ? mine : null;
+  const [selected, setSelected] = useState(() => {
+    if (loc.state && loc.state.seats) return loc.state.seats;
+    return mineHere ? q.bookingFull(mineHere).activeSeats.map((e) => e.seat.seat_id) : [];
   });
+  const [count, setCount] = useState(2);
+  const ms = useCountdown(mineHere ? parseDT(mineHere.payment_deadline).getTime() : null);
+  useDocumentTitle('Select seats');
 
-  const MAX_SEATS = 8;
+  if (!full) return <div className="container-x py-20"><EmptyState icon={Film} title="Show not found" action={<Link to="/movies" className="btn btn-primary">Browse movies</Link>} /></div>;
+  const { show, movie, screen, cinema, prices } = full;
+  const open = isBookable(show);
+  const seatById = (id) => q.seatsOf(show.screen_id).find((s) => s.seat_id === id);
+  const sel = selected.map(seatById).filter(Boolean).sort((a, b) => a.row_label.localeCompare(b.row_label) || a.seat_number - b.seat_number);
+  const subtotal = sel.reduce((a, s) => a + prices[s.seat_category_id], 0);
 
-  const toggleSeat = (seat) => {
-    if (occupiedSeats.includes(seat.id)) return;
+  const toggle = (seat) => {
+    if (selected.includes(seat.seat_id)) setSelected(selected.filter((x) => x !== seat.seat_id));
+    else if (selected.length >= MAX_SEATS) toast.info(`You can book up to ${MAX_SEATS} seats at a time.`);
+    else setSelected([...selected, seat.seat_id]);
+  };
+  const quick = () => {
+    const ids = findBestSeats(show.showtime_id, count, mineHere ? mineHere.booking_id : null);
+    if (!ids) { toast.warn(`No ${count} seats together are free in this show. Try fewer seats or pick manually.`); return; }
+    setSelected(ids);
+    toast.success(`Selected the best ${count} seats for you.`);
+  };
 
-    if (selectedSeatIds.includes(seat.id)) {
-      setSelectedSeatIds(prev => prev.filter(id => id !== seat.id));
-    } else {
-      if (selectedSeatIds.length >= MAX_SEATS) {
-        alert(`You can select a maximum of ${MAX_SEATS} seats per booking.`);
-        return;
+  const proceed = () => {
+    if (!user) { toast.info('Please sign in to continue your booking.'); nav('/login', { state: { from: loc.pathname, seats: selected } }); return; }
+    try {
+      let b = pendingBooking(user.user_id);
+      if (b && b.showtime_id === show.showtime_id) b = replaceHold(b.booking_id, selected);
+      else {
+        if (b) releaseHold(b.booking_id);
+        b = createHold({ showtime_id: show.showtime_id, seat_ids: selected, user_id: user.user_id });
       }
-      setSelectedSeatIds(prev => [...prev, seat.id]);
+      setCartId(b.booking_id);
+      nav('/book/food');
+    } catch (e) {
+      toast.fail(e);
+      const t = takenSeats(show.showtime_id, mineHere ? mineHere.booking_id : null);
+      setSelected((cur) => cur.filter((id) => !t.has(id)));
     }
   };
-
-  const handleProceed = () => {
-    if (!selectedSeatIds.length) return;
-
-    const formattedSeats = selectedSeatIds.map(id => {
-      const seatObj = allSeats.find(s => s.id === id);
-      return {
-        id,
-        row: seatObj.row,
-        number: seatObj.number,
-        type: seatObj.type,
-        price: calculateSeatPrice(show, seatObj.type)
-      };
-    });
-
-    selectSeats(show.id, formattedSeats);
-    navigate('/book/food');
-  };
-
-  const selectedSeatsData = selectedSeatIds.map(id => {
-    const s = allSeats.find(seat => seat.id === id);
-    return {
-      id,
-      type: s?.type || 'Standard',
-      price: calculateSeatPrice(show, s?.type || 'Standard')
-    };
-  });
-
-  const totalSeatsPrice = selectedSeatsData.reduce((sum, s) => sum + s.price, 0);
 
   return (
-    <div className="space-y-8">
-      {/* Stepper Header */}
-      <BookingStepper currentStep={1} />
-
-      {/* Show Context Banner */}
-      <div className="bg-[#111726] border border-[#23304a] rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Link
-            to={`/movie/${movie?.id}`}
-            className="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <div>
-            <h1 className="text-lg font-bold text-white font-['Space_Grotesk'] leading-tight">
-              {movie?.title}
-            </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {cinema?.name} • {screen?.name} ({screen?.type}) • {show.date} at {show.start}
-            </p>
-          </div>
+    <div className="container-x py-8">
+      <Stepper current={0} />
+      <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2">
+        <div>
+          <Link to={`/movie/${movie.movie_id}`} className="text-xs text-fg3 hover:text-gold">← {movie.title}</Link>
+          <h1 className="text-2xl sm:text-3xl font-bold mt-1">Select your seats</h1>
         </div>
-
-        {/* Reservation Hold Timer Badge */}
-        {selectedSeatIds.length > 0 && (
-          <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 px-3.5 py-1.5 rounded-full text-xs text-amber-400 font-semibold self-start md:self-auto">
-            <Clock className="w-3.5 h-3.5 animate-spin" />
-            <span>Seats held for:</span>
-            <span className="font-mono text-white bg-amber-500/20 px-2 py-0.5 rounded">
-              {formatTimer()}
-            </span>
+        {mineHere && ms > 0 && (
+          <div className="ml-auto flex items-center gap-2 rounded-xl border border-warn/40 bg-warn/10 px-4 py-2 text-warn text-sm font-semibold">
+            <Timer size={16} /> Seats held for {fmtClock(ms)}
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Cinema Theater Viewport */}
-        <div className="lg:col-span-2 bg-[#111726] border border-[#23304a] rounded-3xl p-6 md:p-8 flex flex-col items-center shadow-2xl relative overflow-hidden">
-          {/* Ambient Curved Screen Indicator */}
-          <div className="cinema-screen-container w-full">
-            <div className="cinema-screen-curve" />
-            <div className="screen-text">ALL EYES THIS WAY • CINEMA SCREEN</div>
-          </div>
-
-          {/* Seat Grid Map */}
-          <div className="w-full overflow-x-auto py-6 flex flex-col items-center scrollbar-none">
-            <div className="min-w-fit space-y-3">
-              {Array.from({ length: screen?.rows || 8 }, (_, r) => {
-                const rowLabel = String.fromCharCode(65 + r);
-                const rowSeats = allSeats.filter(s => s.row === rowLabel);
-                const halfCol = Math.floor((screen?.cols || 12) / 2);
-
-                return (
-                  <div key={rowLabel} className="flex items-center gap-2">
-                    {/* Left Row Label */}
-                    <span className="w-5 text-center font-bold text-xs text-slate-500">
-                      {rowLabel}
-                    </span>
-
-                    {/* Seats in Row */}
-                    <div className="flex items-center gap-2">
-                      {rowSeats.map(seat => {
-                        const isOccupied = occupiedSeats.includes(seat.id);
-                        const isSelected = selectedSeatIds.includes(seat.id);
-                        const price = calculateSeatPrice(show, seat.type);
-
-                        let seatClass = 'seat-standard';
-                        if (seat.type === 'Premium') seatClass = 'seat-premium';
-                        if (seat.type === 'VIP') seatClass = 'seat-vip';
-                        if (isSelected) seatClass = 'seat-selected';
-                        if (isOccupied) seatClass = 'seat-booked';
-
-                        return (
-                          <React.Fragment key={seat.id}>
-                            <button
-                              disabled={isOccupied}
-                              onClick={() => toggleSeat(seat)}
-                              title={`${seat.id} (${seat.type}) - ${CURRENCY} ${price} ${isOccupied ? '[Sold Out]' : ''}`}
-                              className={`seat-button ${seatClass}`}
-                            >
-                              {isOccupied ? '✕' : seat.number}
-                            </button>
-                            {seat.number === halfCol && (
-                              <div className="w-5 md:w-8 shrink-0" /> // Center Aisle Separation
-                            )}
-                          </React.Fragment>
-                        );
-                      })}
-                    </div>
-
-                    {/* Right Row Label */}
-                    <span className="w-5 text-center font-bold text-xs text-slate-500">
-                      {rowLabel}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Seat Legend */}
-          <div className="w-full pt-6 mt-4 border-t border-[#23304a] flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-[#1e293b] border border-[#334155]" />
-              <span>Standard ({CURRENCY} {calculateSeatPrice(show, 'Standard')})</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-[#1e3a8a] border border-[#2563eb]" />
-              <span>Premium ({CURRENCY} {calculateSeatPrice(show, 'Premium')})</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-[#78350f] border border-[#d97706]" />
-              <span>VIP Recliner ({CURRENCY} {calculateSeatPrice(show, 'VIP')})</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-amber-400 shadow-md shadow-amber-400/50" />
-              <span className="text-amber-400 font-bold">Selected</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-slate-900 border border-slate-800 text-[10px] flex items-center justify-center text-slate-600">
-                ✕
+      {!open ? (
+        <Callout tone="bad" icon={Info}>Booking for this show is closed. <Link to={`/movie/${movie.movie_id}`} className="underline font-semibold">Choose another showtime</Link>.</Callout>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-[1fr_22rem] items-start">
+          <div className="card card-pad">
+            <div className="flex flex-wrap items-center gap-3 mb-8 pb-5 border-b border-line">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-fg2">Seats together:</span>
+                <select className="select input-sm w-auto" value={count} onChange={(e) => setCount(Number(e.target.value))}>
+                  {Array.from({ length: MAX_SEATS }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
               </div>
-              <span>Reserved</span>
+              <button className="btn btn-secondary btn-sm" onClick={quick}><Sparkles size={15} className="text-gold" /> Best available</button>
+              {selected.length > 0 && <button className="btn btn-ghost btn-sm ml-auto" onClick={() => setSelected([])}><Trash2 size={14} /> Clear</button>}
             </div>
+            <SeatMap showId={show.showtime_id} selected={selected} onToggle={toggle} exceptBookingId={mineHere ? mineHere.booking_id : null} />
+            <div className="mt-8 pt-5 border-t border-line"><SeatLegend prices={prices} /></div>
           </div>
-        </div>
 
-        {/* Selection Summary Sidebar */}
-        <div className="space-y-6">
-          <div className="bg-[#111726] border border-[#23304a] rounded-3xl p-6 space-y-6 shadow-xl sticky top-24">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
-                Order Summary
-              </span>
-              <h3 className="text-lg font-bold text-white mt-1">{movie?.title}</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {cinema?.name} • {screen?.name}
-              </p>
-            </div>
-
-            {/* Selected Seats Chips */}
-            <div className="space-y-2 border-t border-[#23304a] pt-4">
-              <div className="flex items-center justify-between text-xs text-slate-400">
-                <span>Selected Seats:</span>
-                <span className="font-bold text-white">
-                  {selectedSeatIds.length} / {MAX_SEATS}
-                </span>
+          <aside className="card lg:sticky lg:top-24 overflow-hidden">
+            <div className="p-5 flex gap-4 border-b border-line">
+              <Poster movie={movie} showTitle={false} className="w-20 shrink-0 !rounded-xl" />
+              <div className="min-w-0">
+                <h3 className="font-semibold leading-snug">{movie.title}</h3>
+                <div className="flex flex-wrap gap-1.5 mt-2"><Badge tone="muted">{movie.content_rating}</Badge><Badge tone="info">{SCREEN_TYPE_LABEL[screen.screen_type]}</Badge></div>
+                <div className="text-xs text-fg3 mt-2">{fmtDuration(movie.duration_minutes)} · {show.audio_language}{show.subtitle_language ? ` · ${show.subtitle_language} subtitles` : ''}</div>
               </div>
-
-              {selectedSeatsData.length > 0 ? (
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {selectedSeatsData.map(s => (
-                    <div
-                      key={s.id}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-[#182238] border border-[#23304a] text-xs"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="bg-amber-400 text-black font-extrabold px-2 py-0.5 rounded text-[11px]">
-                          {s.id}
-                        </span>
-                        <span className="text-slate-300 font-medium">{s.type} Seat</span>
-                      </div>
-                      <span className="font-bold text-white">
-                        {CURRENCY} {s.price}
-                      </span>
-                    </div>
+            </div>
+            <div className="p-5 space-y-2.5 text-sm border-b border-line">
+              <div className="flex items-center gap-2.5 text-fg2"><MapPin size={15} className="text-gold" /> {cinema.cinema_name} · {screen.screen_name}</div>
+              <div className="flex items-center gap-2.5 text-fg2"><Calendar size={15} className="text-gold" /> {dateLong(show.start_time)}</div>
+              <div className="flex items-center gap-2.5 text-fg2"><Clock size={15} className="text-gold" /> {time12(show.start_time)}</div>
+            </div>
+            <div className="p-5">
+              <div className="text-xs font-bold text-fg3 uppercase tracking-wider mb-3">Your seats ({sel.length}/{MAX_SEATS})</div>
+              {sel.length ? (
+                <ul className="space-y-2 text-sm">
+                  {sel.map((s) => (
+                    <li key={s.seat_id} className="flex items-center justify-between">
+                      <span className="flex items-center gap-2"><span className="w-8 h-7 rounded-md bg-gold text-[#17110a] text-xs font-bold flex items-center justify-center">{s.row_label}{s.seat_number}</span><span className="text-fg2">{q.seatCategory(s.seat_category_id).category_name}</span></span>
+                      <span className="font-semibold">{money(prices[s.seat_category_id])}</span>
+                    </li>
                   ))}
-                </div>
-              ) : (
-                <div className="p-6 text-center rounded-2xl bg-[#182238]/40 border border-dashed border-[#23304a] text-slate-500 text-xs">
-                  Click on the cinema seat layout to select your preferred seats.
-                </div>
-              )}
-            </div>
-
-            {/* Subtotal */}
-            <div className="border-t border-[#23304a] pt-4 space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">Seats Subtotal</span>
-                <span className="font-extrabold text-xl text-amber-400">
-                  {CURRENCY} {totalSeatsPrice}
-                </span>
+                </ul>
+              ) : <p className="text-sm text-fg3">Tap seats on the map to select them.</p>}
+              <div className="flex items-center justify-between mt-5 pt-4 border-t border-line">
+                <span className="text-fg2">Tickets total</span>
+                <span className="text-xl font-display font-bold text-gold">{money(subtotal)}</span>
               </div>
-              <p className="text-[11px] text-slate-500">
-                Taxes included. Refreshments and snacks can be added in the next step.
-              </p>
+              <button className="btn btn-primary btn-lg btn-block mt-4" disabled={!sel.length} onClick={proceed}>Continue <ArrowRight size={18} /></button>
+              <p className="text-[11px] text-fg3 mt-3 text-center">Seats are reserved for {HOLD_MINUTES} minutes after you continue.</p>
             </div>
-
-            {/* Proceed CTA */}
-            <button
-              disabled={selectedSeatIds.length === 0}
-              onClick={handleProceed}
-              className={`w-full py-3.5 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-xl transition-all ${
-                selectedSeatIds.length > 0
-                  ? 'bg-amber-500 hover:bg-amber-400 text-black shadow-amber-500/30 hover:scale-[1.02]'
-                  : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
-              }`}
-            >
-              Continue to Refreshments
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
+          </aside>
         </div>
-      </div>
+      )}
     </div>
   );
 }

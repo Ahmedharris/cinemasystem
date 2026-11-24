@@ -1,425 +1,149 @@
-import React, { useState } from 'react';
-import { Building2, Plus, Eye, Armchair, X, Check } from 'lucide-react';
-import { useCinema } from '../../context/CinemaContext';
-import { getScreenSeats } from '../../data/initialData';
-import AdminLayout from '../../components/AdminLayout';
+import { useState } from 'react';
+import { Plus, Pencil, Trash2, LayoutGrid, Armchair } from 'lucide-react';
+import { useDb, useDocumentTitle } from '../../hooks/useDb';
+import { useAuth } from '../../context/AuthContext';
+import { useUI } from '../../context/UIContext';
+import { q, crud } from '../../lib/db';
+import DataTable from '../../components/ui/DataTable';
+import { FormModal } from '../../components/ui/Form';
+import Modal from '../../components/ui/Modal';
+import { PageHeader, StatusBadge, Tabs, Badge } from '../../components/ui/Misc';
+import { SCREEN_TYPE_LABEL, titleCase } from '../../lib/format';
+
+/* ---------- seat layout editor ---------- */
+function SeatEditor({ screen, onClose }) {
+  const { user } = useAuth();
+  const { toast } = useUI();
+  const seats = q.seatsOf(screen.screen_id);
+  const [local, setLocal] = useState(() => Object.fromEntries(seats.map((s) => [s.seat_id, { seat_category_id: s.seat_category_id, seat_status: s.seat_status }])));
+  const [tool, setTool] = useState({ cat: 1, status: 'ACTIVE' });
+  const cats = q.seatCategories();
+  const rows = [...new Set(seats.map((s) => s.row_label))].sort();
+  const paint = (id) => setLocal((l) => ({ ...l, [id]: { seat_category_id: tool.status === 'BROKEN' ? l[id].seat_category_id : tool.cat, seat_status: tool.status } }));
+  const paintRow = (label) => setLocal((l) => { const n = { ...l }; seats.filter((s) => s.row_label === label).forEach((s) => { n[s.seat_id] = { seat_category_id: tool.status === 'BROKEN' ? l[s.seat_id].seat_category_id : tool.cat, seat_status: tool.status }; }); return n; });
+  const changes = Object.fromEntries(seats.filter((s) => local[s.seat_id].seat_category_id !== s.seat_category_id || local[s.seat_id].seat_status !== s.seat_status).map((s) => [s.seat_id, local[s.seat_id]]));
+  const n = Object.keys(changes).length;
+  const save = () => { crud.saveSeatLayout(screen.screen_id, changes, user.user_id); toast.success(`Seat layout saved (${n} seats changed).`); onClose(); };
+  const maxCols = Math.max(...seats.map((s) => s.seat_number));
+  const tools = [...cats.map((c) => ({ key: `c${c.seat_category_id}`, label: c.category_name, cat: c.seat_category_id, status: 'ACTIVE', cls: `seat seat-c${c.seat_category_id}` })), { key: 'broken', label: 'Out of service', cat: 0, status: 'BROKEN', cls: 'seat seat-broken' }];
+  return (
+    <Modal open onClose={onClose} size="xl" title={`Seat layout — ${screen.screen_name}`} subtitle="Choose a brush, then click seats (or a row letter) to repaint them. Changes affect future bookings only."
+      footer={<><span className="text-sm text-fg2 mr-auto">{n} unsaved {n === 1 ? 'change' : 'changes'}</span><button className="btn btn-ghost" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={!n} onClick={save}>Save layout</button></>}>
+      <div className="flex flex-wrap items-center gap-2 mb-6">
+        {tools.map((t) => { const on = tool.status === t.status && (t.status === 'BROKEN' || tool.cat === t.cat); return (
+          <button key={t.key} className={`chip ${on ? 'chip-active' : ''}`} onClick={() => setTool({ cat: t.cat || tool.cat, status: t.status })}><span className={`${t.cls} !w-4 !h-4 pointer-events-none`} /> {t.label}</button>); })}
+      </div>
+      <div className="overflow-x-auto pb-2">
+        <div className="min-w-max mx-auto w-fit">
+          <div className="screen-curve" /><div className="text-center text-[10px] tracking-[0.4em] text-fg3 -mt-5 mb-6">SCREEN</div>
+          <div className="space-y-1.5">
+            {rows.map((label) => (
+              <div key={label} className="flex items-center justify-center gap-1.5">
+                <button className="w-6 text-center text-[11px] font-bold text-fg3 hover:text-gold" onClick={() => paintRow(label)} title="Paint the whole row">{label}</button>
+                <div className="flex gap-1.5">
+                  {seats.filter((s) => s.row_label === label).sort((a, b) => a.seat_number - b.seat_number).map((s) => {
+                    const l = local[s.seat_id];
+                    return <button key={s.seat_id} className={`seat seat-c${l.seat_category_id} ${l.seat_status === 'BROKEN' ? 'seat-broken' : ''}`} style={s.seat_number === Math.floor(maxCols / 2) + 1 ? { marginLeft: '1.1rem' } : undefined} onClick={() => paint(s.seat_id)} title={`${label}${s.seat_number}`} />;
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 export default function AdminCinemas() {
-  const { cinemas, screens, addCinema, addScreen } = useCinema();
+  useDb();
+  useDocumentTitle('Cinemas · Admin');
+  const { user } = useAuth();
+  const { toast, confirm } = useUI();
+  const [tab, setTab] = useState('cinemas');
+  const [cinemaForm, setCinemaForm] = useState(null);
+  const [screenForm, setScreenForm] = useState(null);
+  const [layout, setLayout] = useState(null);
+  const [mult, setMult] = useState({});
+  const run = (fn) => { try { fn(); } catch (e) { toast.fail(e); } };
 
-  const [activeScreenId, setActiveScreenId] = useState(() => screens[0]?.id || 1);
-
-  // Cinema Modal
-  const [cinemaModalOpen, setCinemaModalOpen] = useState(false);
-  const [cinemaName, setCinemaName] = useState('');
-  const [city, setCity] = useState('Lahore');
-  const [address, setAddress] = useState('');
-  const [contact, setContact] = useState('042-111-222-333');
-
-  // Screen Modal
-  const [screenModalOpen, setScreenModalOpen] = useState(false);
-  const [screenCinemaId, setScreenCinemaId] = useState(() => cinemas[0]?.id || 1);
-  const [screenName, setScreenName] = useState('Screen 3');
-  const [screenType, setScreenType] = useState('IMAX');
-  const [screenRows, setScreenRows] = useState(8);
-  const [screenCols, setScreenCols] = useState(12);
-
-  const selectedScreen = screens.find(s => s.id === Number(activeScreenId)) || screens[0];
-  const screenSeats = getScreenSeats(selectedScreen);
-
-  const handleAddCinema = (e) => {
-    e.preventDefault();
-    addCinema({ name: cinemaName, city, address, contact });
-    setCinemaModalOpen(false);
-    setCinemaName('');
-    setAddress('');
+  const cinemaFields = [
+    { name: 'cinema_name', label: 'Cinema name', required: true, full: true },
+    { name: 'city', label: 'City', required: true },
+    { name: 'contact_number', label: 'Contact number', required: true },
+    { name: 'address', label: 'Address', required: true, full: true },
+    { name: 'cinema_status', label: 'Status', type: 'select', noBlank: true, options: [{ value: 'ACTIVE', label: 'Open' }, { value: 'CLOSED', label: 'Closed' }] }
+  ];
+  const saveCinema = (v) => {
+    if (cinemaForm.cinema_id) { crud.update('cinema', cinemaForm.cinema_id, v, user.user_id); toast.success('Cinema updated.'); } else { crud.insert('cinema', v, user.user_id); toast.success('Cinema added.'); }
+  };
+  const delCinema = async (c) => {
+    if (await confirm({ title: `Delete ${c.cinema_name}?`, message: 'Cinemas with screens or staff cannot be deleted — close them instead.', confirmText: 'Delete', danger: true })) run(() => { crud.remove('cinema', c.cinema_id, user.user_id); toast.success('Cinema deleted.'); });
   };
 
-  const handleAddScreen = (e) => {
-    e.preventDefault();
-    const newScr = addScreen({
-      cinemaId: Number(screenCinemaId),
-      name: screenName,
-      type: screenType,
-      rows: Number(screenRows),
-      cols: Number(screenCols)
-    });
-    setScreenModalOpen(false);
-    setActiveScreenId(newScr.id);
+  const screenFields = (isNew) => [
+    ...(isNew ? [{ name: 'cinema_id', label: 'Cinema', type: 'select', numeric: true, required: true, options: q.cinemas().map((c) => ({ value: c.cinema_id, label: c.cinema_name })) }] : []),
+    { name: 'screen_name', label: 'Screen name', required: true },
+    { name: 'screen_type', label: 'Type', type: 'select', required: true, noBlank: true, options: Object.entries(SCREEN_TYPE_LABEL).map(([value, label]) => ({ value, label })) },
+    ...(isNew ? [
+      { name: 'rows', label: 'Rows', type: 'number', required: true, min: 3, max: 16, hint: 'Rows are lettered A, B, C…' },
+      { name: 'cols', label: 'Seats per row', type: 'number', required: true, min: 4, max: 24 }
+    ] : [{ name: 'screen_status', label: 'Status', type: 'select', noBlank: true, options: ['ACTIVE', 'MAINTENANCE', 'CLOSED'].map((s) => ({ value: s, label: titleCase(s) })) }])
+  ];
+  const saveScreen = (v) => {
+    if (screenForm.screen_id) { crud.update('screen', screenForm.screen_id, v, user.user_id); toast.success('Screen updated.'); } else { crud.createScreen(v, user.user_id); toast.success(`Screen created with ${v.rows * v.cols} seats.`); }
   };
+  const delScreen = async (s) => {
+    if (await confirm({ title: `Delete ${s.screen_name}?`, message: 'Its seats are deleted too. Screens that have showtimes cannot be deleted.', confirmText: 'Delete', danger: true })) run(() => { crud.remove('screen', s.screen_id, user.user_id); toast.success('Screen deleted.'); });
+  };
+
+  const cinemaCols = [
+    { key: 'name', header: 'Cinema', sort: (c) => c.cinema_name, cell: (c) => <div><div className="font-semibold">{c.cinema_name}</div><div className="text-xs text-fg3">{c.address}</div></div> },
+    { key: 'city', header: 'City', sort: (c) => c.city },
+    { key: 'phone', header: 'Contact', sort: (c) => c.contact_number },
+    { key: 'screens', header: 'Screens', sort: (c) => q.screensOf(c.cinema_id).length },
+    { key: 'seats', header: 'Seats', sort: (c) => q.screensOf(c.cinema_id).reduce((a, s) => a + q.capacity(s.screen_id), 0) },
+    { key: 'status', header: 'Status', sort: (c) => c.cinema_status, cell: (c) => <Badge tone={c.cinema_status === 'ACTIVE' ? 'ok' : 'muted'}>{c.cinema_status === 'ACTIVE' ? 'Open' : 'Closed'}</Badge> },
+    { key: 'act', header: '', className: 'text-right', cell: (c) => <div className="flex justify-end gap-1"><button className="btn btn-ghost btn-icon" onClick={() => setCinemaForm(c)}><Pencil size={16} /></button><button className="btn btn-ghost btn-icon text-bad" onClick={() => delCinema(c)}><Trash2 size={16} /></button></div> }
+  ];
+  const screenCols = [
+    { key: 'cinema', header: 'Cinema', sort: (s) => q.cinema(s.cinema_id).cinema_name, cell: (s) => q.cinema(s.cinema_id).cinema_name },
+    { key: 'name', header: 'Screen', sort: (s) => s.screen_name, cell: (s) => <span className="font-semibold">{s.screen_name}</span> },
+    { key: 'type', header: 'Type', sort: (s) => s.screen_type, cell: (s) => <Badge tone="info">{SCREEN_TYPE_LABEL[s.screen_type]}</Badge> },
+    { key: 'cap', header: 'Seats', sort: (s) => q.capacity(s.screen_id), cell: (s) => { const all = q.seatsOf(s.screen_id); const broken = all.length - q.capacity(s.screen_id); return <span>{q.capacity(s.screen_id)}{broken > 0 && <span className="text-bad text-xs ml-1">({broken} out)</span>}</span>; } },
+    { key: 'status', header: 'Status', sort: (s) => s.screen_status, cell: (s) => <StatusBadge status={s.screen_status} /> },
+    { key: 'act', header: '', className: 'text-right whitespace-nowrap', cell: (s) => <div className="flex justify-end gap-1"><button className="btn btn-secondary btn-sm" onClick={() => setLayout(s)}><LayoutGrid size={14} /> Seat layout</button><button className="btn btn-ghost btn-icon" onClick={() => setScreenForm(s)}><Pencil size={16} /></button><button className="btn btn-ghost btn-icon text-bad" onClick={() => delScreen(s)}><Trash2 size={16} /></button></div> }
+  ];
 
   return (
-    <AdminLayout
-      title="Cinema Branches &amp; Screen Layouts"
-      subtitle="Manage physical branches, auditorium screens, and seating layout configurations."
-      actions={
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setCinemaModalOpen(true)}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-3 py-2 rounded-xl text-xs border border-slate-700 transition-colors"
-          >
-            + Add Cinema Branch
-          </button>
-          <button
-            onClick={() => setScreenModalOpen(true)}
-            className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-3.5 py-2 rounded-xl text-xs shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" /> Add Auditorium Screen
-          </button>
-        </div>
-      }
-    >
-      <div className="space-y-8">
-        {/* Cinema Branches Table */}
-        <div className="bg-[#111726] border border-[#1f2b42] rounded-3xl p-6 shadow-xl space-y-4">
-          <h3 className="font-bold text-sm text-white flex items-center gap-2 border-b border-[#1f2b42] pb-3">
-            <Building2 className="w-4 h-4 text-amber-400" />
-            Cinema Branches Directory
-          </h3>
+    <div>
+      <PageHeader title="Cinemas & screens" subtitle="Branches, auditoriums, seat layouts and seat categories."
+        actions={tab === 'cinemas' ? <button className="btn btn-primary" onClick={() => setCinemaForm({ cinema_status: 'ACTIVE' })}><Plus size={16} /> Add cinema</button> : tab === 'screens' ? <button className="btn btn-primary" onClick={() => setScreenForm({ screen_type: 'STANDARD', rows: 8, cols: 12 })}><Plus size={16} /> Add screen</button> : null} />
+      <Tabs className="mb-5" value={tab} onChange={setTab} tabs={[{ value: 'cinemas', label: 'Cinemas', count: q.cinemas().length }, { value: 'screens', label: 'Screens', count: q.screens().length }, { value: 'categories', label: 'Seat categories' }]} />
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="text-slate-500 border-b border-[#1f2b42]">
-                  <th className="pb-3 font-semibold">ID</th>
-                  <th className="pb-3 font-semibold">Cinema Name</th>
-                  <th className="pb-3 font-semibold">City</th>
-                  <th className="pb-3 font-semibold">Address</th>
-                  <th className="pb-3 font-semibold">Contact Line</th>
-                  <th className="pb-3 font-semibold">Active Screens</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#1f2b42]">
-                {cinemas.map(c => {
-                  const count = screens.filter(s => s.cinemaId === c.id).length;
-                  return (
-                    <tr key={c.id} className="hover:bg-[#182238]/40">
-                      <td className="py-3 font-mono text-slate-500">#{c.id}</td>
-                      <td className="py-3 font-bold text-white">{c.name}</td>
-                      <td className="py-3 text-slate-300 font-medium">{c.city}</td>
-                      <td className="py-3 text-slate-400">{c.address}</td>
-                      <td className="py-3 text-slate-400 font-mono">{c.contact}</td>
-                      <td className="py-3">
-                        <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">
-                          {count} Screens
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Screens Table */}
-        <div className="bg-[#111726] border border-[#1f2b42] rounded-3xl p-6 shadow-xl space-y-4">
-          <h3 className="font-bold text-sm text-white flex items-center gap-2 border-b border-[#1f2b42] pb-3">
-            <Armchair className="w-4 h-4 text-cyan-400" />
-            Auditorium Screens &amp; Seating Capacity
-          </h3>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="text-slate-500 border-b border-[#1f2b42]">
-                  <th className="pb-3 font-semibold">Screen ID</th>
-                  <th className="pb-3 font-semibold">Cinema Branch</th>
-                  <th className="pb-3 font-semibold">Screen Name</th>
-                  <th className="pb-3 font-semibold">Screen Type</th>
-                  <th className="pb-3 font-semibold">Grid Geometry</th>
-                  <th className="pb-3 font-semibold">Derived Capacity</th>
-                  <th className="pb-3 font-semibold text-right">Preview Layout</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#1f2b42]">
-                {screens.map(scr => {
-                  const cin = cinemas.find(c => c.id === scr.cinemaId);
-                  const cap = getScreenSeats(scr).length;
-                  const isViewing = activeScreenId === scr.id;
-
-                  return (
-                    <tr key={scr.id} className={`hover:bg-[#182238]/40 ${isViewing ? 'bg-[#182238]/60' : ''}`}>
-                      <td className="py-3 font-mono text-slate-500">#{scr.id}</td>
-                      <td className="py-3 font-semibold text-white">{cin?.name}</td>
-                      <td className="py-3 font-medium text-slate-300">{scr.name}</td>
-                      <td className="py-3">
-                        <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded text-[10px] font-semibold">
-                          {scr.type}
-                        </span>
-                      </td>
-                      <td className="py-3 text-slate-400 font-mono">
-                        {scr.rows} rows × {scr.cols} cols
-                      </td>
-                      <td className="py-3 font-bold text-amber-400">{cap} Seats</td>
-                      <td className="py-3 text-right">
-                        <button
-                          onClick={() => setActiveScreenId(scr.id)}
-                          className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
-                            isViewing
-                              ? 'bg-amber-500 text-black font-bold'
-                              : 'bg-[#182238] hover:bg-slate-700 text-slate-200'
-                          }`}
-                        >
-                          {isViewing ? 'Active Layout' : 'View Layout'}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Live Visual Seat Layout Preview */}
-        {selectedScreen && (
-          <div className="bg-[#111726] border border-[#1f2b42] rounded-3xl p-6 md:p-8 shadow-xl space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#1f2b42] pb-4">
-              <div>
-                <h3 className="font-extrabold text-base text-white font-['Space_Grotesk'] flex items-center gap-2">
-                  <Eye className="w-5 h-5 text-amber-400" />
-                  Seat Layout Configuration — {selectedScreen.name} ({getScreenSeats(selectedScreen).length} Seats)
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Type: {selectedScreen.type} • {selectedScreen.rows} rows, {selectedScreen.cols} columns
-                </p>
+      {tab === 'cinemas' && <DataTable columns={cinemaCols} rows={q.cinemas()} rowKey={(c) => c.cinema_id} searchText={(c) => `${c.cinema_name} ${c.city} ${c.address}`} exportName="cinemas" />}
+      {tab === 'screens' && <DataTable columns={screenCols} rows={q.screens()} rowKey={(s) => s.screen_id} searchText={(s) => `${s.screen_name} ${q.cinema(s.cinema_id).cinema_name}`} filters={[{ key: 'cinema', label: 'All cinemas', options: q.cinemas().map((c) => ({ value: c.cinema_id, label: c.cinema_name })), test: (s, v) => s.cinema_id === Number(v) }]} />}
+      {tab === 'categories' && (
+        <div className="grid gap-5 md:grid-cols-3">
+          {q.seatCategories().map((c) => {
+            const count = q.screens().reduce((a, s) => a + q.seatsOf(s.screen_id).filter((x) => x.seat_category_id === c.seat_category_id).length, 0);
+            const val = mult[c.seat_category_id] ?? c.price_multiplier;
+            return (
+              <div key={c.seat_category_id} className="card card-pad">
+                <div className="flex items-center justify-between mb-4"><div className="flex items-center gap-3"><span className={`seat seat-c${c.seat_category_id} pointer-events-none`}><Armchair size={13} /></span><h3 className="font-semibold">{c.category_name}</h3></div><span className="text-xs text-fg3">{count} seats</span></div>
+                <label className="label">Price multiplier</label>
+                <div className="flex gap-2"><input className="input" type="number" step="0.05" min="0.5" max="5" value={val} onChange={(e) => setMult({ ...mult, [c.seat_category_id]: e.target.value })} />
+                  <button className="btn btn-secondary" disabled={Number(val) === c.price_multiplier || !(Number(val) > 0)} onClick={() => { crud.update('seat_category', c.seat_category_id, { price_multiplier: Number(val) }, user.user_id); setMult({}); toast.success('Multiplier updated.'); }}>Save</button></div>
+                <p className="field-hint">Used to suggest prices for new shows: base price × multiplier.</p>
               </div>
-
-              {/* Legend */}
-              <div className="flex items-center gap-4 text-xs text-slate-400">
-                <span className="flex items-center gap-1.5">
-                  <div className="w-3.5 h-3.5 rounded bg-[#1e293b] border border-[#334155]" />
-                  Standard
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <div className="w-3.5 h-3.5 rounded bg-[#1e3a8a] border border-[#2563eb]" />
-                  Premium
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <div className="w-3.5 h-3.5 rounded bg-[#78350f] border border-[#d97706]" />
-                  VIP Recliner
-                </span>
-              </div>
-            </div>
-
-            {/* Visual Curved Screen */}
-            <div className="cinema-screen-container">
-              <div className="cinema-screen-curve" />
-              <div className="screen-text">SCREEN POSITION</div>
-            </div>
-
-            {/* Layout Grid */}
-            <div className="w-full overflow-x-auto py-4 flex flex-col items-center scrollbar-none">
-              <div className="min-w-fit space-y-2.5">
-                {Array.from({ length: selectedScreen.rows }, (_, r) => {
-                  const rowLabel = String.fromCharCode(65 + r);
-                  const rowSeats = screenSeats.filter(s => s.row === rowLabel);
-                  const half = Math.floor(selectedScreen.cols / 2);
-
-                  return (
-                    <div key={rowLabel} className="flex items-center gap-2">
-                      <span className="w-5 text-center font-bold text-xs text-slate-500 font-mono">
-                        {rowLabel}
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        {rowSeats.map(seat => {
-                          let cls = 'bg-[#1e293b] text-slate-400 border border-[#334155]';
-                          if (seat.type === 'Premium') cls = 'bg-[#1e3a8a] text-blue-200 border border-[#2563eb]';
-                          if (seat.type === 'VIP') cls = 'bg-[#78350f] text-amber-200 border border-[#d97706]';
-
-                          return (
-                            <React.Fragment key={seat.id}>
-                              <div
-                                title={`${seat.id} (${seat.type})`}
-                                className={`w-7 h-7 rounded text-[10px] font-bold flex items-center justify-center cursor-default ${cls}`}
-                              >
-                                {seat.number}
-                              </div>
-                              {seat.number === half && <div className="w-6 shrink-0" />}
-                            </React.Fragment>
-                          );
-                        })}
-                      </div>
-                      <span className="w-5 text-center font-bold text-xs text-slate-500 font-mono">
-                        {rowLabel}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Add Cinema Modal */}
-      {cinemaModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#111726] border border-[#23304a] rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-in">
-            <h3 className="font-bold text-white text-base">Add New Cinema Branch</h3>
-            <form onSubmit={handleAddCinema} className="space-y-4 text-xs">
-              <div>
-                <label className="font-semibold text-slate-400 block mb-1">Cinema Branch Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. CineMax Bahria Town"
-                  value={cinemaName}
-                  onChange={(e) => setCinemaName(e.target.value)}
-                  className="w-full bg-[#182238] border border-[#23304a] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-400 block mb-1">City</label>
-                <input
-                  type="text"
-                  required
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="w-full bg-[#182238] border border-[#23304a] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-400 block mb-1">Address</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Street / Plaza address"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  className="w-full bg-[#182238] border border-[#23304a] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-400 block mb-1">Contact Phone</label>
-                <input
-                  type="text"
-                  required
-                  value={contact}
-                  onChange={(e) => setContact(e.target.value)}
-                  className="w-full bg-[#182238] border border-[#23304a] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setCinemaModalOpen(false)}
-                  className="bg-slate-800 text-slate-300 px-4 py-2 rounded-xl font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-amber-500 text-black px-4 py-2 rounded-xl font-extrabold"
-                >
-                  Create Branch
-                </button>
-              </div>
-            </form>
-          </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Add Screen Modal */}
-      {screenModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#111726] border border-[#23304a] rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-in">
-            <h3 className="font-bold text-white text-base">Add Screen to Cinema</h3>
-            <form onSubmit={handleAddScreen} className="space-y-4 text-xs">
-              <div>
-                <label className="font-semibold text-slate-400 block mb-1">Select Branch</label>
-                <select
-                  value={screenCinemaId}
-                  onChange={(e) => setScreenCinemaId(e.target.value)}
-                  className="w-full bg-[#182238] border border-[#23304a] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                >
-                  {cinemas.map(c => (
-                    <option key={c.id} value={c.id}>{c.name} ({c.city})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-slate-400 block mb-1">Screen Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={screenName}
-                    onChange={(e) => setScreenName(e.target.value)}
-                    className="w-full bg-[#182238] border border-[#23304a] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-slate-400 block mb-1">Screen Type</label>
-                  <select
-                    value={screenType}
-                    onChange={(e) => setScreenType(e.target.value)}
-                    className="w-full bg-[#182238] border border-[#23304a] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  >
-                    <option value="Standard">Standard</option>
-                    <option value="3D">3D</option>
-                    <option value="IMAX">IMAX</option>
-                    <option value="VIP">VIP</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-slate-400 block mb-1">Rows (A-Z)</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={20}
-                    required
-                    value={screenRows}
-                    onChange={(e) => setScreenRows(e.target.value)}
-                    className="w-full bg-[#182238] border border-[#23304a] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-slate-400 block mb-1">Seats Per Row</label>
-                  <input
-                    type="number"
-                    min={4}
-                    max={30}
-                    required
-                    value={screenCols}
-                    onChange={(e) => setScreenCols(e.target.value)}
-                    className="w-full bg-[#182238] border border-[#23304a] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 bg-slate-800/60 rounded-xl text-[11px] text-slate-400">
-                Total seats automatically generated: <strong>{screenRows * screenCols} seats</strong>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setScreenModalOpen(false)}
-                  className="bg-slate-800 text-slate-300 px-4 py-2 rounded-xl font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-amber-500 text-black px-4 py-2 rounded-xl font-extrabold"
-                >
-                  Create Screen
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </AdminLayout>
+      <FormModal open={!!cinemaForm} title={cinemaForm && cinemaForm.cinema_id ? 'Edit cinema' : 'Add cinema'} fields={cinemaFields} initial={cinemaForm || {}} onSubmit={saveCinema} onClose={() => setCinemaForm(null)} />
+      <FormModal open={!!screenForm} title={screenForm && screenForm.screen_id ? 'Edit screen' : 'Add screen'} subtitle={screenForm && !screenForm.screen_id ? 'Seats are generated automatically; fine-tune them afterwards in the seat layout editor.' : undefined} fields={screenFields(screenForm && !screenForm.screen_id)} initial={screenForm || {}} onSubmit={saveScreen} onClose={() => setScreenForm(null)} />
+      {layout && <SeatEditor screen={layout} onClose={() => setLayout(null)} />}
+    </div>
   );
 }

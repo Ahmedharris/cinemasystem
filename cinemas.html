@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cinemas — CineMax</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <div id="app-header"></div>
+  <main>
+    <div class="container">
+      <h1 class="page-title">Our cinemas</h1>
+      <div class="page-sub">Find a branch near you.</div>
+      <div class="grid cols-3" id="list"></div>
+    </div>
+  </main>
+  <div id="app-footer"></div>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    renderHeader("cinemas");
+    $("#list").innerHTML = CINEMAS.map(c => {
+      const screens = SCREENS.filter(s => s.cinemaId === c.id);
+      return `<div class="panel">
+        <h3>🏢 ${c.name}</h3>
+        <div class="muted">${c.address}, ${c.city}</div>
+        <div class="muted small mb">📞 ${c.contact}</div>
+        ${screens.map(s => `<div class="row flex between" style="padding:6px 0;border-top:1px solid var(--border)">
+          <span>${s.name} <span class="badge info">${s.type}</span></span><span class="muted small">${screenCapacity(s.id)} seats</span></div>`).join("")}
+      </div>`;
+    }).join("");
+  </script>
+</body>
+</html>

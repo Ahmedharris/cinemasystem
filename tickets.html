@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your Tickets — CineMax</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <div id="app-header"></div>
+  <main>
+    <div class="container" style="max-width:820px">
+      <div id="head"></div>
+      <div id="tickets"></div>
+      <div id="food-block"></div>
+      <div class="flex mt">
+        <a href="my-bookings.html" class="btn secondary">My bookings</a>
+        <a href="index.html" class="btn">Book another movie</a>
+        <button class="btn secondary" onclick="window.print()">🖨 Print</button>
+      </div>
+    </div>
+  </main>
+  <div id="app-footer"></div>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    renderHeader("bookings");
+    const b = allBookings().find(x => x.id === param("booking"));
+    if (!b) {
+      $("#head").innerHTML = '<div class="panel empty">Booking not found. <a class="btn mt" href="my-bookings.html">My bookings</a></div>';
+    } else {
+      const show = byId(SHOWS, b.showId), movie = byId(MOVIES, show.movieId);
+      const screen = byId(SCREENS, show.screenId), cinema = byId(CINEMAS, screen.cinemaId);
+      const issued = b.status === "CONFIRMED";
+      $("#head").innerHTML = `
+        <div class="center mb">
+          <div style="font-size:3rem">${issued ? "🎉" : "⏳"}</div>
+          <h1 class="page-title">${issued ? "Booking confirmed!" : "Booking " + b.status.toLowerCase()}</h1>
+          <div class="muted">Booking <strong>${b.id}</strong> • Payment ${statusBadge(b.payment.status)} via ${b.payment.method}
+            ${b.payment.ref ? "• Ref " + b.payment.ref : ""} • Total <strong>${money(b.total)}</strong></div>
+        </div>`;
+      if (!issued) {
+        $("#tickets").innerHTML = '<div class="panel empty">Tickets are issued only after a successful payment.</div>';
+      } else {
+        $("#tickets").innerHTML = b.seats.map(s => `
+          <div class="ticket">
+            <div class="main">
+              <span class="badge gold">${screen.type}</span>
+              <h3 class="mt">${movie.title}</h3>
+              <div class="muted">${cinema.name}, ${cinema.city}</div>
+              <div class="flex wrap mt" style="gap:24px">
+                <div><div class="muted small">Date</div><strong>${fmtDate(show.date)}</strong></div>
+                <div><div class="muted small">Time</div><strong>${show.start}</strong></div>
+                <div><div class="muted small">Screen</div><strong>${screen.name}</strong></div>
+                <div><div class="muted small">Seat</div><span class="seat-chip">${s.id}</span> <span class="muted small">${s.type}</span></div>
+              </div>
+            </div>
+            <div class="stub"><div class="qr"></div><div class="ticket-code">TKT-${b.id.slice(3)}-${s.id}</div>${statusBadge("VALID")}</div>
+          </div>`).join("");
+      }
+      if (b.food.length) {
+        $("#food-block").innerHTML = `<div class="panel summary"><h3>🍿 Refreshments pre-order</h3>` +
+          b.food.map(f => `<div class="row"><span>${byId(FOOD_ITEMS, f.id).name} × ${f.qty}</span><span>${money(f.unit * f.qty)}</span></div>`).join("") +
+          `<div class="muted small mt">Collect from the counter at ${cinema.name} using your booking ID.</div></div>`;
+      }
+    }
+  </script>
+</body>
+</html>

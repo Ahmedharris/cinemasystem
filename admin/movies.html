@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Movies — CineMax Admin</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="admin">
+  <main class="admin-main" id="admin-content">
+    <div class="panel mb">
+      <div class="flex wrap mb">
+        <input id="search" placeholder="Search movies..." style="max-width:280px">
+        <select id="f-status" style="max-width:180px">
+          <option value="">All statuses</option><option>NOW_SHOWING</option><option>COMING_SOON</option><option>ARCHIVED</option>
+        </select>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>Title</th><th>Genres</th><th>Duration</th><th>Language</th><th>Rating</th><th>Release</th><th>Status</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+    </div>
+
+    <div class="panel">
+      <div class="flex between mb"><h3>Genres</h3><button class="btn small secondary" id="add-genre">+ Add genre</button></div>
+      <div class="chips" id="genres"></div>
+      <div class="muted small">Movie ↔ Genre is many-to-many (stored in Movie_Genre).</div>
+    </div>
+  </main>
+
+  <div class="modal-back" id="modal">
+    <form class="modal" id="form">
+      <h3 id="modal-title">Add movie</h3>
+      <div class="form-grid">
+        <div class="full"><label>Title</label><input id="m-title" required></div>
+        <div><label>Duration (minutes)</label><input id="m-dur" type="number" min="1" required></div>
+        <div><label>Release date</label><input id="m-rel" type="date" required></div>
+        <div><label>Language</label><input id="m-lang" required></div>
+        <div><label>Content rating</label>
+          <select id="m-rating"><option>G</option><option>PG</option><option>PG-13</option><option>R</option></select></div>
+        <div><label>Status</label>
+          <select id="m-status"><option>NOW_SHOWING</option><option>COMING_SOON</option><option>ARCHIVED</option></select></div>
+        <div><label>Genres (hold Ctrl to pick several)</label><select id="m-genres" multiple size="4"></select></div>
+        <div class="full"><label>Synopsis</label><textarea id="m-syn"></textarea></div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn secondary" onclick="closeModal('modal')">Cancel</button>
+        <button type="submit" class="btn">Save movie</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script>
+    renderAdmin("movies", "Movies & Genres", "Maintain the movie catalogue.", '<button class="btn" id="add">+ Add movie</button>');
+    let editingId = null;
+    GENRES.forEach(g => $("#m-genres").insertAdjacentHTML("beforeend", `<option value="${g.id}">${g.name}</option>`));
+
+    function draw() {
+      const q = $("#search").value.toLowerCase(), st = $("#f-status").value;
+      $("#rows").innerHTML = MOVIES.filter(m => m.title.toLowerCase().includes(q) && (!st || m.status === st)).map(m => `
+        <tr><td>${m.id}</td><td><strong>${m.emoji} ${m.title}</strong></td><td>${genreNames(m).join(", ")}</td>
+        <td>${m.duration} min</td><td>${m.language}</td><td>${m.rating}</td><td>${m.release}</td><td>${statusBadge(m.status)}</td>
+        <td><button class="btn small secondary" data-edit="${m.id}">Edit</button>
+            <button class="btn small danger" data-del="${m.id}">Delete</button></td></tr>`).join("");
+      $$("[data-edit]").forEach(b => b.onclick = () => openForm(Number(b.dataset.edit)));
+      $$("[data-del]").forEach(b => b.onclick = () => {
+        const id = Number(b.dataset.del);
+        if (SHOWS.some(s => s.movieId === id)) return toast("Cannot delete: movie has scheduled shows (FK). Archive it instead.");
+        if (confirm("Delete this movie?")) { MOVIES.splice(MOVIES.findIndex(m => m.id === id), 1); draw(); toast("Movie deleted"); }
+      });
+      $("#genres").innerHTML = GENRES.map(g => `<span class="badge info">${g.name} (${MOVIES.filter(m => m.genres.includes(g.id)).length})</span>`).join("");
+    }
+    function openForm(id) {
+      editingId = id || null;
+      const m = id ? byId(MOVIES, id) : null;
+      $("#modal-title").textContent = m ? "Edit movie" : "Add movie";
+      $("#m-title").value = m ? m.title : ""; $("#m-dur").value = m ? m.duration : "";
+      $("#m-rel").value = m ? m.release : ""; $("#m-lang").value = m ? m.language : "English";
+      $("#m-rating").value = m ? m.rating : "PG-13"; $("#m-status").value = m ? m.status : "COMING_SOON";
+      $("#m-syn").value = m ? m.synopsis : "";
+      Array.from($("#m-genres").options).forEach(o => o.selected = m ? m.genres.includes(Number(o.value)) : false);
+      openModal("modal");
+    }
+    $("#add").onclick = () => openForm();
+    $("#form").onsubmit = e => {
+      e.preventDefault();
+      const genres = Array.from($("#m-genres").selectedOptions).map(o => Number(o.value));
+      if (!genres.length) return toast("Pick at least one genre");
+      const data = { title: $("#m-title").value, duration: Number($("#m-dur").value), release: $("#m-rel").value, language: $("#m-lang").value,
+        rating: $("#m-rating").value, status: $("#m-status").value, synopsis: $("#m-syn").value, genres };
+      if (editingId) Object.assign(byId(MOVIES, editingId), data);
+      else MOVIES.push(Object.assign({ id: Math.max(...MOVIES.map(m => m.id)) + 1, emoji: "🎬", colors: ["#374151", "#111827"] }, data));
+      closeModal("modal"); draw(); toast("Movie saved (prototype: resets on reload)");
+    };
+    $("#add-genre").onclick = () => {
+      const n = prompt("New genre name:");
+      if (!n) return;
+      if (GENRES.some(g => g.name.toLowerCase() === n.toLowerCase())) return toast("Genre already exists (UNIQUE genre_name)");
+      GENRES.push({ id: GENRES.length + 1, name: n });
+      $("#m-genres").insertAdjacentHTML("beforeend", `<option value="${GENRES.length}">${n}</option>`);
+      draw(); toast("Genre added");
+    };
+    $("#search").oninput = draw; $("#f-status").onchange = draw;
+    draw();
+  </script>
+</body>
+</html>

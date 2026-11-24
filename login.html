@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login — CineMax</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <div id="app-header"></div>
+  <main>
+    <div class="container">
+      <form class="panel auth-box" id="form">
+        <h1 class="page-title">Welcome back</h1>
+        <div class="page-sub">Log in to view your bookings and tickets.</div>
+        <div class="field"><label>Email</label><input type="email" id="email" required placeholder="you@example.com"></div>
+        <div class="field"><label>Password</label><input type="password" id="pw" required></div>
+        <button class="btn block" type="submit">Login</button>
+        <p class="muted small center mt">No account? <a href="register.html" style="color:var(--accent-2)">Sign up</a> •
+          <a href="admin/index.html" style="color:var(--accent-2)">Admin login</a></p>
+      </form>
+    </div>
+  </main>
+  <div id="app-footer"></div>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    renderHeader("login");
+    $("#form").onsubmit = e => {
+      e.preventDefault();
+      const email = $("#email").value;
+      const c = CUSTOMERS.find(x => x.email === email);
+      store.set("cms_user", { name: c ? c.name : email.split("@")[0], email, phone: c ? c.phone : "" });
+      location.href = "my-bookings.html";
+    };
+  </script>
+</body>
+</html>

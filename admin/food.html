@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Food Menu — CineMax Admin</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="admin">
+  <main class="admin-main" id="admin-content">
+    <div class="panel mb">
+      <div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>Item</th><th>Description</th><th>Category</th><th>Current price</th><th>Availability</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+      <p class="muted small mt">Changing the price here only affects new orders — past Order_Detail rows keep their original unit_price.</p>
+    </div>
+
+    <div class="panel">
+      <h3>Food sales (units sold)</h3>
+      <div id="chart"></div>
+    </div>
+  </main>
+
+  <div class="modal-back" id="modal">
+    <form class="modal" id="form">
+      <h3 id="modal-title">Add menu item</h3>
+      <div class="form-grid">
+        <div class="full"><label>Item name</label><input id="f-name" required></div>
+        <div class="full"><label>Description</label><input id="f-desc"></div>
+        <div><label>Category</label><select id="f-cat"><option>Snacks</option><option>Meals</option><option>Drinks</option><option>Desserts</option><option>Combos</option></select></div>
+        <div><label>Current price (Rs.)</label><input id="f-price" type="number" min="1" required></div>
+        <div><label>Availability</label><select id="f-avail"><option value="1">AVAILABLE</option><option value="0">UNAVAILABLE</option></select></div>
+      </div>
+      <div class="actions"><button type="button" class="btn secondary" onclick="closeModal('modal')">Cancel</button><button class="btn" type="submit">Save</button></div>
+    </form>
+  </div>
+
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/admin.js"></script>
+  <script>
+    renderAdmin("food", "Food Menu", "Manage refreshment items and prices.", '<button class="btn" id="add">+ Add item</button>');
+    let editing = null;
+    function draw() {
+      $("#rows").innerHTML = FOOD_ITEMS.map(f => `<tr><td>${f.id}</td><td><strong>${f.icon} ${f.name}</strong></td><td class="wrap muted">${f.desc}</td><td>${f.category}</td>
+        <td>${money(f.price)}</td><td>${statusBadge(f.available ? "AVAILABLE" : "UNAVAILABLE")}</td>
+        <td><button class="btn small secondary" data-edit="${f.id}">Edit</button> <button class="btn small secondary" data-toggle="${f.id}">${f.available ? "Mark unavailable" : "Mark available"}</button></td></tr>`).join("");
+      $$("[data-edit]").forEach(b => b.onclick = () => openForm(Number(b.dataset.edit)));
+      $$("[data-toggle]").forEach(b => b.onclick = () => { const f = byId(FOOD_ITEMS, b.dataset.toggle); f.available = !f.available; draw(); });
+      $("#chart").innerHTML = foodSales().length ? barsHTML(foodSales(), v => v + " sold") : '<div class="muted">No sales yet.</div>';
+    }
+    function openForm(id) {
+      editing = id || null;
+      const f = id ? byId(FOOD_ITEMS, id) : null;
+      $("#modal-title").textContent = f ? "Edit menu item" : "Add menu item";
+      $("#f-name").value = f ? f.name : ""; $("#f-desc").value = f ? f.desc : "";
+      $("#f-cat").value = f ? f.category : "Snacks"; $("#f-price").value = f ? f.price : "";
+      $("#f-avail").value = f && !f.available ? "0" : "1";
+      openModal("modal");
+    }
+    $("#add").onclick = () => openForm();
+    $("#form").onsubmit = e => {
+      e.preventDefault();
+      const d = { name: $("#f-name").value, desc: $("#f-desc").value, category: $("#f-cat").value, price: Number($("#f-price").value), available: $("#f-avail").value === "1" };
+      if (editing) Object.assign(byId(FOOD_ITEMS, editing), d);
+      else FOOD_ITEMS.push(Object.assign({ id: FOOD_ITEMS.length + 1, icon: "🍽️" }, d));
+      closeModal("modal"); draw(); toast("Item saved (prototype: resets on reload)");
+    };
+    draw();
+  </script>
+</body>
+</html>

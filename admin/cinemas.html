@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cinemas &amp; Screens — CineMax Admin</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="admin">
+  <main class="admin-main" id="admin-content">
+    <div class="panel mb">
+      <h3>Cinema branches</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>Name</th><th>City</th><th>Address</th><th>Contact</th><th>Screens</th></tr></thead>
+        <tbody id="cinemas"></tbody>
+      </table></div>
+    </div>
+
+    <div class="panel mb">
+      <h3>Screens</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>Cinema</th><th>Screen name</th><th>Type</th><th>Layout</th><th>Capacity (derived)</th><th></th></tr></thead>
+        <tbody id="screens"></tbody>
+      </table></div>
+    </div>
+
+    <div class="panel">
+      <div class="flex between wrap mb">
+        <h3 id="layout-title">Seat layout</h3>
+        <select id="layout-screen" style="max-width:280px"></select>
+      </div>
+      <div class="screen-bar"></div><div class="screen-label">SCREEN</div>
+      <div class="seat-map" id="seat-map"></div>
+      <div class="legend">
+        <span><i style="background:#2f3547"></i>Standard</span>
+        <span><i style="background:#34507a"></i>Premium</span>
+        <span><i style="background:#7a5a1c"></i>VIP Recliner</span>
+      </div>
+    </div>
+  </main>
+
+  <div class="modal-back" id="modal-cinema">
+    <form class="modal" id="form-cinema">
+      <h3>Add cinema branch</h3>
+      <div class="form-grid">
+        <div class="full"><label>Cinema name</label><input id="c-name" required></div>
+        <div><label>City</label><input id="c-city" required></div>
+        <div><label>Contact number</label><input id="c-contact" required></div>
+        <div class="full"><label>Address</label><input id="c-addr" required></div>
+      </div>
+      <div class="actions"><button type="button" class="btn secondary" onclick="closeModal('modal-cinema')">Cancel</button><button class="btn" type="submit">Save</button></div>
+    </form>
+  </div>
+
+  <div class="modal-back" id="modal-screen">
+    <form class="modal" id="form-screen">
+      <h3>Add screen</h3>
+      <div class="form-grid">
+        <div class="full"><label>Cinema</label><select id="sc-cinema"></select></div>
+        <div><label>Screen name</label><input id="sc-name" required></div>
+        <div><label>Screen type</label><select id="sc-type"><option>Standard</option><option>3D</option><option>IMAX</option><option>VIP</option></select></div>
+        <div><label>Rows</label><input type="number" id="sc-rows" min="1" max="20" value="8" required></div>
+        <div><label>Seats per row</label><input type="number" id="sc-cols" min="2" max="24" value="12" required></div>
+      </div>
+      <div class="notice">Seats are generated automatically from rows × seats per row.</div>
+      <div class="actions"><button type="button" class="btn secondary" onclick="closeModal('modal-screen')">Cancel</button><button class="btn" type="submit">Save</button></div>
+    </form>
+  </div>
+
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script>
+    renderAdmin("cinemas", "Cinemas & Screens", "Manage branches, screens and seat layouts.",
+      '<button class="btn secondary" id="add-cinema">+ Cinema</button> <button class="btn" id="add-screen">+ Screen</button>');
+
+    function draw() {
+      $("#cinemas").innerHTML = CINEMAS.map(c => `<tr><td>${c.id}</td><td><strong>${c.name}</strong></td><td>${c.city}</td><td>${c.address}</td><td>${c.contact}</td>
+        <td>${SCREENS.filter(s => s.cinemaId === c.id).length}</td></tr>`).join("");
+      $("#screens").innerHTML = SCREENS.map(s => `<tr><td>${s.id}</td><td>${byId(CINEMAS, s.cinemaId).name}</td><td>${s.name}</td><td><span class="badge info">${s.type}</span></td>
+        <td>${s.rows} rows × ${s.cols}</td><td>${screenCapacity(s.id)} seats</td><td><button class="btn small secondary" data-view="${s.id}">View seats</button></td></tr>`).join("");
+      $$("[data-view]").forEach(b => b.onclick = () => { $("#layout-screen").value = b.dataset.view; drawLayout(); window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); });
+      $("#layout-screen").innerHTML = SCREENS.map(s => `<option value="${s.id}">${byId(CINEMAS, s.cinemaId).name} — ${s.name}</option>`).join("");
+      $("#sc-cinema").innerHTML = CINEMAS.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+    }
+    function drawLayout() {
+      const sc = byId(SCREENS, $("#layout-screen").value) || SCREENS[0];
+      $("#layout-title").textContent = "Seat layout — " + sc.name + " (" + screenCapacity(sc.id) + " seats)";
+      const seats = getSeats(sc.id);
+      let html = "";
+      for (let r = 0; r < sc.rows; r++) {
+        const label = String.fromCharCode(65 + r);
+        html += `<div class="seat-row"><div class="row-label">${label}</div>`;
+        seats.filter(s => s.row === label).forEach(s => {
+          html += `<div class="seat ${s.type.toLowerCase()}" style="cursor:default" title="${s.id} • ${s.type}">${s.number}</div>`;
+          if (s.number === sc.cols / 2) html += '<div class="aisle"></div>';
+        });
+        html += "</div>";
+      }
+      $("#seat-map").innerHTML = html;
+    }
+    $("#layout-screen").onchange = drawLayout;
+    $("#add-cinema").onclick = () => openModal("modal-cinema");
+    $("#add-screen").onclick = () => openModal("modal-screen");
+    $("#form-cinema").onsubmit = e => {
+      e.preventDefault();
+      CINEMAS.push({ id: CINEMAS.length + 1, name: $("#c-name").value, city: $("#c-city").value, contact: $("#c-contact").value, address: $("#c-addr").value });
+      closeModal("modal-cinema"); draw(); drawLayout(); toast("Cinema added (prototype: resets on reload)");
+    };
+    $("#form-screen").onsubmit = e => {
+      e.preventDefault();
+      const cid = Number($("#sc-cinema").value), name = $("#sc-name").value;
+      if (SCREENS.some(s => s.cinemaId === cid && s.name.toLowerCase() === name.toLowerCase())) return toast("Screen name must be unique within a cinema");
+      SCREENS.push({ id: SCREENS.length + 1, cinemaId: cid, name, type: $("#sc-type").value, rows: Number($("#sc-rows").value), cols: Number($("#sc-cols").value) });
+      closeModal("modal-screen"); draw(); drawLayout(); toast("Screen added with generated seats");
+    };
+    draw(); drawLayout();
+  </script>
+</body>
+</html>

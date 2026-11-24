@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Checkout — CineMax</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <div id="app-header"></div>
+  <main>
+    <div class="container">
+      <h1 class="page-title">Checkout</h1>
+      <div class="page-sub">Review your booking and pay. (Payment is simulated in this project.)</div>
+
+      <div class="two-col">
+        <form id="pay-form" class="panel">
+          <h3>Customer details</h3>
+          <div class="form-grid mb">
+            <div><label>Full name</label><input id="name" required></div>
+            <div><label>Email</label><input id="email" type="email" required></div>
+            <div class="full"><label>Phone</label><input id="phone" required placeholder="03xx-xxxxxxx"></div>
+          </div>
+
+          <h3>Payment method</h3>
+          <div class="pay-options" id="pay-options">
+            <label class="pay-option active"><input type="radio" name="method" value="Card" checked> 💳 Credit / Debit Card</label>
+            <label class="pay-option"><input type="radio" name="method" value="Easypaisa"> 📱 Easypaisa</label>
+            <label class="pay-option"><input type="radio" name="method" value="JazzCash"> 📱 JazzCash</label>
+            <label class="pay-option"><input type="radio" name="method" value="Cash at counter"> 💵 Pay at counter</label>
+          </div>
+
+          <div id="card-fields" class="form-grid mb">
+            <div class="full"><label>Card number</label><input placeholder="4242 4242 4242 4242"></div>
+            <div><label>Expiry</label><input placeholder="MM/YY"></div>
+            <div><label>CVV</label><input placeholder="123"></div>
+          </div>
+
+          <div class="notice">Simulated payment — no real money is charged. Choose a result to test both outcomes:</div>
+          <div class="field" style="max-width:260px">
+            <label>Simulated payment result</label>
+            <select id="sim"><option value="SUCCESS">Success</option><option value="FAILED">Failed</option></select>
+          </div>
+
+          <button class="btn gold" type="submit">Pay &amp; confirm booking</button>
+        </form>
+
+        <div class="panel summary sticky">
+          <div class="title" id="s-movie"></div>
+          <div class="muted small mb" id="s-info"></div>
+          <div id="s-lines"></div>
+          <div class="row total"><span>Total payable</span><span id="s-total"></span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <div id="app-footer"></div>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    renderHeader("home");
+    const cart = getCart();
+    if (!cart || !cart.seats.length) location.replace("index.html");
+    const show = byId(SHOWS, cart.showId);
+    const movie = byId(MOVIES, show.movieId);
+    const screen = byId(SCREENS, show.screenId);
+    const cinema = byId(CINEMAS, screen.cinemaId);
+    const seatList = getSeats(screen.id);
+
+    const seats = cart.seats.map(id => { const s = seatList.find(x => x.id === id); return { id, type: s.type, price: seatPrice(show, s.type) }; });
+    const food = Object.keys(cart.food).map(id => ({ id: Number(id), qty: cart.food[id], unit: byId(FOOD_ITEMS, id).price }));
+    const total = seats.reduce((a, s) => a + s.price, 0) + food.reduce((a, f) => a + f.unit * f.qty, 0);
+
+    $("#s-movie").textContent = movie.title;
+    $("#s-info").textContent = `${cinema.name} • ${screen.name} • ${fmtDate(show.date)} ${show.start}`;
+    $("#s-lines").innerHTML =
+      seats.map(s => `<div class="row"><span><span class="seat-chip">${s.id}</span> ${s.type}</span><span>${money(s.price)}</span></div>`).join("") +
+      food.map(f => `<div class="row"><span>${byId(FOOD_ITEMS, f.id).name} × ${f.qty}</span><span>${money(f.unit * f.qty)}</span></div>`).join("");
+    $("#s-total").textContent = money(total);
+
+    const user = getUser();
+    if (user) { $("#name").value = user.name; $("#email").value = user.email; $("#phone").value = user.phone || ""; }
+
+    $$("input[name=method]").forEach(r => r.onchange = () => {
+      $$(".pay-option").forEach(o => o.classList.toggle("active", o.querySelector("input").checked));
+      $("#card-fields").style.display = r.value === "Card" ? "grid" : "none";
+    });
+
+    $("#pay-form").onsubmit = e => {
+      e.preventDefault();
+      const result = $("#sim").value;
+      const method = $("input[name=method]:checked").value;
+      if (result === "FAILED") {
+        toast("Payment failed — your seats are not booked. Try again.");
+        $("#sim").value = "SUCCESS";
+        return;
+      }
+      const id = nextBookingId();
+      saveBooking({
+        id, customer: { name: $("#name").value, email: $("#email").value }, showId: show.id,
+        time: new Date().toISOString().slice(0, 16).replace("T", " "),
+        status: "CONFIRMED", seats, food, total,
+        payment: { method, status: "SUCCESS", ref: "TXN-" + Math.floor(10000 + Math.random() * 89999) }
+      });
+      store.set("cms_user", { name: $("#name").value, email: $("#email").value, phone: $("#phone").value });
+      clearCart();
+      location.href = "tickets.html?booking=" + id;
+    };
+  </script>
+</body>
+</html>

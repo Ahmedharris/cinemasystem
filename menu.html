@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Food Menu — CineMax</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <div id="app-header"></div>
+  <main>
+    <div class="container">
+      <h1 class="page-title">Food &amp; drinks menu</h1>
+      <div class="page-sub">Add refreshments to your booking at checkout.</div>
+      <div class="food-grid" id="grid"></div>
+    </div>
+  </main>
+  <div id="app-footer"></div>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    renderHeader("food");
+    $("#grid").innerHTML = FOOD_ITEMS.map(f => `<div class="food-card">
+      <div class="ico">${f.icon}</div><h4>${f.name}</h4><div class="muted small">${f.desc}</div>
+      <div class="flex between mt"><strong>${money(f.price)}</strong>${f.available ? '<span class="badge ok">Available</span>' : '<span class="badge bad">Sold out</span>'}</div></div>`).join("");
+  </script>
+</body>
+</html>

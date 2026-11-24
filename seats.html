@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Select Seats — CineMax</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <div id="app-header"></div>
+  <main>
+    <div class="container">
+      <h1 class="page-title">Select your seats</h1>
+      <div class="page-sub" id="sub"></div>
+
+      <div class="two-col">
+        <div class="panel">
+          <div class="screen-bar"></div>
+          <div class="screen-label">SCREEN THIS WAY</div>
+          <div class="seat-map" id="seat-map"></div>
+          <div class="legend">
+            <span><i style="background:#2f3547"></i>Standard</span>
+            <span><i style="background:#34507a"></i>Premium</span>
+            <span><i style="background:#7a5a1c"></i>VIP Recliner</span>
+            <span><i style="background:var(--accent)"></i>Selected</span>
+            <span><i style="background:#181b24;border:1px solid #2c3140"></i>Booked</span>
+          </div>
+        </div>
+
+        <div class="panel summary sticky">
+          <div class="title" id="s-movie"></div>
+          <div class="muted small mb" id="s-info"></div>
+          <div id="s-seats"></div>
+          <div class="row total"><span>Seats total</span><span id="s-total">Rs. 0</span></div>
+          <a id="continue" class="btn block mt disabled" href="food.html">Continue to refreshments →</a>
+          <p class="muted small mt">Max 8 seats per booking. Seat prices = show base price × seat type.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <div id="app-footer"></div>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    renderHeader("home");
+    const show = byId(SHOWS, param("show")) || SHOWS[0];
+    const movie = byId(MOVIES, show.movieId);
+    const screen = byId(SCREENS, show.screenId);
+    const cinema = byId(CINEMAS, screen.cinemaId);
+    const taken = activeSeatsFor(show.id);
+    const MAX = 8;
+    let selected = [];
+
+    // restore if user came back from next step
+    const cart = getCart();
+    if (cart && cart.showId === show.id) selected = cart.seats.slice();
+
+    $("#sub").textContent = `${cinema.name}, ${cinema.city} • ${screen.name} (${screen.type})`;
+    $("#s-movie").textContent = movie.title;
+    $("#s-info").textContent = `${fmtDate(show.date)} • ${show.start} – ${show.end}`;
+
+    const seats = getSeats(screen.id);
+    const half = screen.cols / 2;
+    function draw() {
+      let html = "";
+      for (let r = 0; r < screen.rows; r++) {
+        const label = String.fromCharCode(65 + r);
+        html += `<div class="seat-row"><div class="row-label">${label}</div>`;
+        seats.filter(s => s.row === label).forEach(s => {
+          const cls = ["seat", s.type.toLowerCase()];
+          if (taken.includes(s.id)) cls.push("taken");
+          else if (selected.includes(s.id)) cls.push("selected");
+          html += `<button class="${cls.join(" ")}" data-id="${s.id}" title="${s.id} • ${s.type} • ${money(seatPrice(show, s.type))}">${s.number}</button>`;
+          if (s.number === half) html += '<div class="aisle"></div>';
+        });
+        html += `<div class="row-label">${label}</div></div>`;
+      }
+      $("#seat-map").innerHTML = html;
+      $$(".seat:not(.taken)").forEach(b => b.onclick = () => toggle(b.dataset.id));
+      summary();
+    }
+    function toggle(id) {
+      if (selected.includes(id)) selected = selected.filter(x => x !== id);
+      else if (selected.length >= MAX) return toast("Maximum " + MAX + " seats per booking");
+      else selected.push(id);
+      draw();
+    }
+    function summary() {
+      let total = 0;
+      $("#s-seats").innerHTML = selected.length ? selected.map(id => {
+        const s = seats.find(x => x.id === id), p = seatPrice(show, s.type); total += p;
+        return `<div class="row"><span><span class="seat-chip">${id}</span> ${s.type}</span><span>${money(p)}</span></div>`;
+      }).join("") : '<div class="muted small">No seats selected yet.</div>';
+      $("#s-total").textContent = money(total);
+      $("#continue").classList.toggle("disabled", !selected.length);
+    }
+    $("#continue").addEventListener("click", () => {
+      setCart({ showId: show.id, seats: selected, food: (cart && cart.showId === show.id ? cart.food : {}) || {} });
+    });
+    draw();
+  </script>
+</body>
+</html>

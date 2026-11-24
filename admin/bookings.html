@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bookings — CineMax Admin</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="admin">
+  <main class="admin-main" id="admin-content">
+    <div class="panel">
+      <div class="flex wrap mb">
+        <input id="search" placeholder="Search by ID or customer..." style="max-width:280px">
+        <select id="f-status" style="max-width:180px"><option value="">All statuses</option><option>CONFIRMED</option><option>PENDING</option><option>CANCELLED</option></select>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Booking</th><th>Customer</th><th>Movie / Show</th><th>Seats</th><th>Total</th><th>Payment</th><th>Status</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+    </div>
+  </main>
+
+  <div class="modal-back" id="modal">
+    <div class="modal">
+      <h3 id="d-title"></h3>
+      <div id="d-body"></div>
+      <div class="actions"><button class="btn secondary" onclick="closeModal('modal')">Close</button></div>
+    </div>
+  </div>
+
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script>
+    renderAdmin("bookings", "Bookings", "All customer bookings with payment and ticket status.");
+    const list = allBookings();
+    function draw() {
+      const q = $("#search").value.toLowerCase(), st = $("#f-status").value;
+      $("#rows").innerHTML = list.filter(b => (b.id + b.customer.name).toLowerCase().includes(q) && (!st || b.status === st)).reverse().map(b => {
+        const show = byId(SHOWS, b.showId), m = byId(MOVIES, show.movieId);
+        return `<tr><td><strong>${b.id}</strong><div class="muted small">${b.time}</div></td><td>${b.customer.name}<div class="muted small">${b.customer.email}</div></td>
+          <td>${m.title}<div class="muted small">${fmtDate(show.date)} ${show.start}</div></td><td>${b.seats.map(s => s.id).join(", ")}</td>
+          <td>${money(b.total)}</td><td>${statusBadge(b.payment.status)}<div class="muted small">${b.payment.method}</div></td><td>${statusBadge(b.status)}</td>
+          <td><button class="btn small secondary" data-view="${b.id}">Details</button>
+          ${b.status === "CONFIRMED" ? `<button class="btn small danger" data-cancel="${b.id}">Cancel</button>` : ""}</td></tr>`;
+      }).join("") || '<tr><td colspan="8" class="empty">No bookings found.</td></tr>';
+      $$("[data-view]").forEach(b => b.onclick = () => details(b.dataset.view));
+      $$("[data-cancel]").forEach(b => b.onclick = () => {
+        if (!confirm("Cancel booking and refund payment? Seats will be released.")) return;
+        const bk = list.find(x => x.id === b.dataset.cancel);
+        bk.status = "CANCELLED"; bk.payment.status = "REFUNDED"; draw(); toast("Booking cancelled — seats released");
+      });
+    }
+    function details(id) {
+      const b = list.find(x => x.id === id), show = byId(SHOWS, b.showId), m = byId(MOVIES, show.movieId);
+      const sc = byId(SCREENS, show.screenId), c = byId(CINEMAS, sc.cinemaId);
+      $("#d-title").textContent = "Booking " + b.id;
+      $("#d-body").innerHTML = `
+        <div class="summary">
+          <div class="row"><span class="muted">Customer</span><span>${b.customer.name} (${b.customer.email})</span></div>
+          <div class="row"><span class="muted">Movie</span><span>${m.title}</span></div>
+          <div class="row"><span class="muted">Show</span><span>${c.name} • ${sc.name} • ${fmtDate(show.date)} ${show.start}</span></div>
+          <div class="row"><span class="muted">Payment</span><span>${b.payment.method} ${statusBadge(b.payment.status)} ${b.payment.ref || ""}</span></div>
+        </div>
+        <h4 class="mt">Booking_Seat</h4>
+        <table><thead><tr><th>Seat</th><th>Type</th><th>Price (snapshot)</th><th>Ticket</th></tr></thead><tbody>
+        ${b.seats.map(s => `<tr><td>${s.id}</td><td>${s.type}</td><td>${money(s.price)}</td><td>${b.status === "CONFIRMED" ? "TKT-" + b.id.slice(3) + "-" + s.id : "—"}</td></tr>`).join("")}</tbody></table>
+        ${b.food.length ? `<h4 class="mt">Food order</h4><table><thead><tr><th>Item</th><th>Qty</th><th>Unit price</th><th>Line total</th></tr></thead><tbody>
+        ${b.food.map(f => `<tr><td>${byId(FOOD_ITEMS, f.id).name}</td><td>${f.qty}</td><td>${money(f.unit)}</td><td>${money(f.unit * f.qty)}</td></tr>`).join("")}</tbody></table>` : ""}
+        <div class="summary"><div class="row total"><span>Total</span><span>${money(b.total)}</span></div></div>`;
+      openModal("modal");
+    }
+    $("#search").oninput = draw; $("#f-status").onchange = draw;
+    draw();
+  </script>
+</body>
+</html>

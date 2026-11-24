@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Movie Details — CineMax</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <div id="app-header"></div>
+  <main>
+    <div class="container">
+      <div id="detail"></div>
+
+      <div id="showtimes-section">
+        <h2>Showtimes</h2>
+        <div class="flex wrap mb">
+          <div style="width:220px">
+            <label for="city">City</label>
+            <select id="city"><option value="">All cities</option></select>
+          </div>
+        </div>
+        <div class="date-strip" id="dates"></div>
+        <div id="shows"></div>
+      </div>
+    </div>
+  </main>
+  <div id="app-footer"></div>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    renderHeader("home");
+    const movie = byId(MOVIES, param("id")) || MOVIES[0];
+
+    $("#detail").innerHTML = `
+      <div class="movie-detail">
+        ${posterHTML(movie)}
+        <div>
+          <h1 class="page-title">${movie.title}</h1>
+          <div class="chips">${statusBadge(movie.status)}<span class="badge">${movie.rating}</span>
+            ${genreNames(movie).map(g => `<span class="badge info">${g}</span>`).join("")}</div>
+          <div class="meta-list">
+            <span>⏱ ${fmtDuration(movie.duration)}</span>
+            <span>🗣 ${movie.language}</span>
+            <span>📅 Release: ${fmtDate(movie.release, { day: "numeric", month: "long", year: "numeric" })}</span>
+          </div>
+          <h3 class="mt">Synopsis</h3>
+          <p class="muted">${movie.synopsis}</p>
+        </div>
+      </div>`;
+
+    if (movie.status !== "NOW_SHOWING") {
+      $("#showtimes-section").innerHTML = '<div class="panel empty">🎞 This movie is coming soon — showtimes will be announced shortly.</div>';
+    } else {
+      CINEMAS.map(c => c.city).filter((v, i, a) => a.indexOf(v) === i)
+        .forEach(c => $("#city").insertAdjacentHTML("beforeend", `<option>${c}</option>`));
+
+      const dates = [...new Set(SHOWS.map(s => s.date))];
+      let selected = dates[0];
+      function drawDates() {
+        $("#dates").innerHTML = dates.map(d => {
+          const [y, m, dd] = d.split("-").map(Number);
+          const dt = new Date(y, m - 1, dd);
+          return `<button class="date-pill ${d === selected ? "active" : ""}" data-d="${d}">
+            <div class="w">${dt.toLocaleDateString("en-GB", { weekday: "short" })}</div>
+            <div class="d">${dd}</div>
+            <div class="w">${dt.toLocaleDateString("en-GB", { month: "short" })}</div></button>`;
+        }).join("");
+        $$(".date-pill").forEach(b => b.onclick = () => { selected = b.dataset.d; drawDates(); drawShows(); });
+      }
+      function drawShows() {
+        const city = $("#city").value;
+        const shows = SHOWS.filter(s => s.movieId === movie.id && s.date === selected);
+        let html = "";
+        CINEMAS.filter(c => !city || c.city === city).forEach(c => {
+          const rows = SCREENS.filter(sc => sc.cinemaId === c.id).map(sc => {
+            const ss = shows.filter(s => s.screenId === sc.id);
+            if (!ss.length) return "";
+            return `<div class="show-row"><div class="screen-name"><strong>${sc.name}</strong><div class="muted small">${sc.type}</div></div>
+              ${ss.map(s => `<a class="time-btn" href="seats.html?show=${s.id}">${s.start}<small>${money(s.basePrice)}</small></a>`).join("")}</div>`;
+          }).join("");
+          if (rows) html += `<div class="panel cinema-block"><h4>${c.name} <span class="muted small">— ${c.city}</span></h4>${rows}</div>`;
+        });
+        $("#shows").innerHTML = html || '<div class="panel empty">No shows scheduled for this selection.</div>';
+      }
+      $("#city").onchange = drawShows;
+      drawDates(); drawShows();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Bookings — CineMax</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <div id="app-header"></div>
+  <main>
+    <div class="container">
+      <h1 class="page-title">My bookings</h1>
+      <div class="page-sub">Your booking history, tickets and payment status.</div>
+      <div class="notice" id="demo-note"></div>
+      <div class="panel table-wrap">
+        <table>
+          <thead><tr><th>Booking</th><th>Movie</th><th>Show</th><th>Seats</th><th>Food</th><th>Total</th><th>Status</th><th></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+  <div id="app-footer"></div>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    renderHeader("bookings");
+    const user = getUser();
+    // Prototype: show sample customer's bookings (Ali Raza) + any created in this browser
+    const email = user ? user.email : "ali.raza@example.com";
+    $("#demo-note").textContent = user ? "Showing bookings for " + user.email
+      : "Demo mode: not logged in, showing sample bookings for ali.raza@example.com";
+    const mine = allBookings().filter(b => b.customer.email === email || (user && b.customer.email === user.email));
+    $("#rows").innerHTML = mine.length ? mine.map(b => {
+      const show = byId(SHOWS, b.showId), movie = byId(MOVIES, show.movieId);
+      const cinema = byId(CINEMAS, byId(SCREENS, show.screenId).cinemaId);
+      return `<tr><td><strong>${b.id}</strong></td><td>${movie.title}</td>
+        <td>${cinema.name}<div class="muted small">${fmtDate(show.date)} ${show.start}</div></td>
+        <td>${b.seats.map(s => s.id).join(", ")}</td><td>${b.food.length ? b.food.reduce((a, f) => a + f.qty, 0) + " items" : "—"}</td>
+        <td>${money(b.total)}</td><td>${statusBadge(b.status)}</td>
+        <td><a class="btn small secondary" href="tickets.html?booking=${b.id}">View</a></td></tr>`;
+    }).join("") : '<tr><td colspan="8" class="empty">No bookings yet.</td></tr>';
+  </script>
+</body>
+</html>

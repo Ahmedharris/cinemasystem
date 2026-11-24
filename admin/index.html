@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Dashboard — CineMax</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="admin">
+  <main class="admin-main" id="admin-content">
+    <div class="grid cols-4 mb" id="stats"></div>
+
+    <div class="grid cols-2 mb">
+      <div class="panel"><h3>🎬 Tickets sold per movie</h3><div id="chart-movies"></div></div>
+      <div class="panel"><h3>🏢 Revenue per branch</h3><div id="chart-cinemas"></div></div>
+    </div>
+
+    <div class="grid cols-2 mb">
+      <div class="panel">
+        <h3>🕒 Today's shows &amp; seat occupancy</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Time</th><th>Movie</th><th>Screen</th><th>Occupancy</th></tr></thead>
+          <tbody id="today"></tbody>
+        </table></div>
+      </div>
+      <div class="panel"><h3>👑 Top customers</h3><div id="chart-customers"></div></div>
+    </div>
+
+    <div class="panel">
+      <h3>Recent bookings</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>Customer</th><th>Movie</th><th>Seats</th><th>Total</th><th>Status</th></tr></thead>
+        <tbody id="recent"></tbody>
+      </table></div>
+    </div>
+  </main>
+
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/admin.js"></script>
+  <script>
+    renderAdmin("dashboard", "Dashboard", "Overview of bookings, revenue and occupancy.");
+    const bookings = allBookings();
+    const todayStr = SHOWS[0].date;
+    const todayShows = SHOWS.filter(s => s.date === todayStr);
+    const avgOcc = Math.round(todayShows.reduce((a, s) => a + showOccupancy(s).pct, 0) / todayShows.length);
+
+    $("#stats").innerHTML = [
+      ["🎟️", totalTickets(), "Tickets sold"],
+      ["💰", money(totalRevenue()), "Revenue (confirmed payments)"],
+      ["📋", bookings.length, "Total bookings"],
+      ["💺", avgOcc + "%", "Avg. occupancy today"]
+    ].map(s => `<div class="stat"><span class="ico">${s[0]}</span><div class="v">${s[1]}</div><div class="l">${s[2]}</div></div>`).join("");
+
+    $("#chart-movies").innerHTML = barsHTML(ticketsPerMovie(), v => v + " tickets");
+    $("#chart-cinemas").innerHTML = barsHTML(revenuePerCinema(), money);
+    $("#chart-customers").innerHTML = barsHTML(topCustomers().slice(0, 5), money);
+
+    $("#today").innerHTML = todayShows.slice(0, 8).map(s => {
+      const o = showOccupancy(s);
+      return `<tr><td>${s.start}</td><td>${byId(MOVIES, s.movieId).title}</td><td>${byId(SCREENS, s.screenId).name} <span class="muted small">#${s.screenId}</span></td>
+        <td>${o.booked}/${o.cap} <span class="muted small">(${o.pct}%)</span></td></tr>`;
+    }).join("");
+
+    $("#recent").innerHTML = bookings.slice(-6).reverse().map(b => {
+      const m = byId(MOVIES, byId(SHOWS, b.showId).movieId);
+      return `<tr><td><strong>${b.id}</strong></td><td>${b.customer.name}</td><td>${m.title}</td><td>${b.seats.map(s => s.id).join(", ")}</td><td>${money(b.total)}</td><td>${statusBadge(b.status)}</td></tr>`;
+    }).join("");
+  </script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reports — CineMax Admin</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="admin">
+  <main class="admin-main" id="admin-content">
+    <div class="notice">These reports map to the aggregate SQL queries in the proposal (COUNT / SUM / AVG with GROUP BY and HAVING). Values are computed from mock data for now.</div>
+
+    <div class="grid cols-2 mb">
+      <div class="panel"><h3>Tickets sold per movie</h3><div class="muted small mb">COUNT(Booking_Seat) GROUP BY movie</div><div id="r1"></div></div>
+      <div class="panel"><h3>Revenue per branch</h3><div class="muted small mb">SUM(Payment.amount) GROUP BY cinema</div><div id="r2"></div></div>
+      <div class="panel"><h3>Food item sales</h3><div class="muted small mb">SUM(Order_Detail.quantity) GROUP BY item</div><div id="r3"></div></div>
+      <div class="panel"><h3>Top customers</h3><div class="muted small mb">Subquery: customers above average spend</div><div id="r4"></div></div>
+    </div>
+
+    <div class="panel mb">
+      <h3>Seat occupancy per show</h3>
+      <div class="muted small mb">Occupied seats ÷ capacity for the selected date</div>
+      <select id="date" style="max-width:200px" class="mb"></select>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Show</th><th>Movie</th><th>Cinema / Screen</th><th>Booked</th><th>Capacity</th><th style="width:30%">Occupancy</th></tr></thead>
+        <tbody id="occ"></tbody>
+      </table></div>
+    </div>
+
+    <div class="panel">
+      <h3>Payments summary</h3>
+      <div class="muted small mb">Only SUCCESS payments count as collected revenue</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Method</th><th>Payments</th><th>Collected</th></tr></thead><tbody id="pay"></tbody>
+      </table></div>
+    </div>
+  </main>
+
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/admin.js"></script>
+  <script>
+    renderAdmin("reports", "Reports", "Operational and management reports.", '<button class="btn secondary" onclick="window.print()">🖨 Print</button>');
+    $("#r1").innerHTML = barsHTML(ticketsPerMovie(), v => v + " tickets");
+    $("#r2").innerHTML = barsHTML(revenuePerCinema(), money);
+    $("#r3").innerHTML = barsHTML(foodSales(), v => v + " sold");
+    const tc = topCustomers(), avg = tc.reduce((a, c) => a + c[1], 0) / (tc.length || 1);
+    $("#r4").innerHTML = barsHTML(tc.filter(c => c[1] >= avg), money) + `<div class="muted small mt">Average spend: ${money(avg)}</div>`;
+
+    const dates = [...new Set(SHOWS.map(s => s.date))];
+    $("#date").innerHTML = dates.map(d => `<option value="${d}">${fmtDate(d)}</option>`).join("");
+    function drawOcc() {
+      $("#occ").innerHTML = SHOWS.filter(s => s.date === $("#date").value).map(s => {
+        const o = showOccupancy(s), sc = byId(SCREENS, s.screenId);
+        return `<tr><td>#${s.id} • ${s.start}</td><td>${byId(MOVIES, s.movieId).title}</td><td>${byId(CINEMAS, sc.cinemaId).name} / ${sc.name}</td>
+          <td>${o.booked}</td><td>${o.cap}</td><td><div class="bars"><div class="bar-row" style="margin:0"><div class="bar-track"><div class="bar-fill" style="width:${o.pct}%"></div></div><div class="bar-val" style="width:46px">${o.pct}%</div></div></div></td></tr>`;
+      }).join("");
+    }
+    $("#date").onchange = drawOcc; drawOcc();
+
+    const methods = {};
+    allBookings().filter(b => b.payment.status === "SUCCESS").forEach(b => {
+      const m = methods[b.payment.method] = methods[b.payment.method] || { n: 0, amt: 0 };
+      m.n++; m.amt += b.total;
+    });
+    $("#pay").innerHTML = Object.entries(methods).map(([k, v]) => `<tr><td>${k}</td><td>${v.n}</td><td>${money(v.amt)}</td></tr>`).join("");
+  </script>
+</body>
+</html>

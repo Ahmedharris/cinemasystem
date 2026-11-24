@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Show Schedule — CineMax Admin</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="admin">
+  <main class="admin-main" id="admin-content">
+    <div class="panel">
+      <div class="flex wrap mb">
+        <select id="f-date" style="max-width:200px"></select>
+        <select id="f-cinema" style="max-width:220px"><option value="">All cinemas</option></select>
+        <select id="f-movie" style="max-width:220px"><option value="">All movies</option></select>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>Date</th><th>Time</th><th>Movie</th><th>Cinema / Screen</th><th>Base price</th><th>Occupancy</th><th>Status</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+    </div>
+  </main>
+
+  <div class="modal-back" id="modal">
+    <form class="modal" id="form">
+      <h3>Schedule a show</h3>
+      <div class="form-grid">
+        <div class="full"><label>Movie</label><select id="s-movie"></select></div>
+        <div class="full"><label>Screen</label><select id="s-screen"></select></div>
+        <div><label>Date</label><input type="date" id="s-date" required></div>
+        <div><label>Start time</label><input type="time" id="s-time" required></div>
+        <div><label>Base price (Rs.)</label><input type="number" id="s-price" min="1" required></div>
+        <div><label>End time (auto)</label><input id="s-end" disabled></div>
+      </div>
+      <div class="notice">Rule: shows on the same screen must not overlap (checked on save).</div>
+      <div class="actions">
+        <button type="button" class="btn secondary" onclick="closeModal('modal')">Cancel</button>
+        <button type="submit" class="btn">Save show</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/admin.js"></script>
+  <script>
+    renderAdmin("shows", "Show Schedule", "Schedule movies on screens.", '<button class="btn" id="add">+ Schedule show</button>');
+    const dates = [...new Set(SHOWS.map(s => s.date))];
+    $("#f-date").innerHTML = dates.map(d => `<option value="${d}">${fmtDate(d)}</option>`).join("");
+    CINEMAS.forEach(c => $("#f-cinema").insertAdjacentHTML("beforeend", `<option value="${c.id}">${c.name}</option>`));
+    MOVIES.filter(m => m.status === "NOW_SHOWING").forEach(m => $("#f-movie").insertAdjacentHTML("beforeend", `<option value="${m.id}">${m.title}</option>`));
+    $("#s-movie").innerHTML = MOVIES.filter(m => m.status !== "ARCHIVED").map(m => `<option value="${m.id}">${m.title} (${m.duration} min)</option>`).join("");
+    $("#s-screen").innerHTML = SCREENS.map(s => `<option value="${s.id}">${byId(CINEMAS, s.cinemaId).name} — ${s.name} (${s.type})</option>`).join("");
+
+    function draw() {
+      const d = $("#f-date").value, c = $("#f-cinema").value, m = $("#f-movie").value;
+      const list = SHOWS.filter(s => s.date === d && (!m || s.movieId === Number(m)) &&
+        (!c || byId(SCREENS, s.screenId).cinemaId === Number(c)))
+        .sort((a, b) => a.screenId - b.screenId || a.start.localeCompare(b.start));
+      $("#rows").innerHTML = list.map(s => {
+        const sc = byId(SCREENS, s.screenId), o = showOccupancy(s);
+        return `<tr><td>${s.id}</td><td>${fmtDate(s.date)}</td><td>${s.start} – ${s.end}</td><td><strong>${byId(MOVIES, s.movieId).title}</strong></td>
+          <td>${byId(CINEMAS, sc.cinemaId).name}<div class="muted small">${sc.name}</div></td><td>${money(s.basePrice)}</td>
+          <td>${o.booked}/${o.cap} (${o.pct}%)</td><td>${statusBadge(s.status)}</td>
+          <td><button class="btn small danger" data-cancel="${s.id}" ${s.status === "CANCELLED" ? "disabled" : ""}>Cancel show</button></td></tr>`;
+      }).join("") || '<tr><td colspan="9" class="empty">No shows for this filter.</td></tr>';
+      $$("[data-cancel]").forEach(b => b.onclick = () => {
+        if (confirm("Cancel this show?")) { byId(SHOWS, b.dataset.cancel).status = "CANCELLED"; draw(); toast("Show cancelled"); }
+      });
+    }
+    ["f-date", "f-cinema", "f-movie"].forEach(id => $("#" + id).onchange = draw);
+
+    function toMin(t) { const [h, m] = t.split(":").map(Number); return h * 60 + m; }
+    function calcEnd() {
+      const mv = byId(MOVIES, $("#s-movie").value);
+      if (!$("#s-time").value) return $("#s-end").value = "";
+      const e = toMin($("#s-time").value) + mv.duration + 15;
+      $("#s-end").value = pad2(Math.floor(e / 60) % 24) + ":" + pad2(e % 60);
+    }
+    ["s-movie", "s-time"].forEach(id => $("#" + id).addEventListener("input", calcEnd));
+    $("#s-screen").addEventListener("change", () => { $("#s-price").value = SCREEN_BASE_PRICE[byId(SCREENS, $("#s-screen").value).type]; });
+    $("#add").onclick = () => {
+      $("#s-date").value = $("#f-date").value;
+      $("#s-price").value = SCREEN_BASE_PRICE[byId(SCREENS, $("#s-screen").value).type];
+      openModal("modal");
+    };
+    $("#form").onsubmit = e => {
+      e.preventDefault();
+      const screenId = Number($("#s-screen").value), date = $("#s-date").value;
+      const start = toMin($("#s-time").value), end = toMin($("#s-end").value);
+      const clash = SHOWS.find(s => s.screenId === screenId && s.date === date && s.status !== "CANCELLED" &&
+        start < toMin(s.end) && end > toMin(s.start));
+      if (clash) return toast("Overlaps with show #" + clash.id + " (" + clash.start + "–" + clash.end + ") on this screen");
+      SHOWS.push({ id: Math.max(...SHOWS.map(s => s.id)) + 1, movieId: Number($("#s-movie").value), screenId, date,
+        start: $("#s-time").value, end: $("#s-end").value, basePrice: Number($("#s-price").value), status: "SCHEDULED" });
+      if (!dates.includes(date)) { dates.push(date); $("#f-date").insertAdjacentHTML("beforeend", `<option value="${date}">${fmtDate(date)}</option>`); }
+      $("#f-date").value = date;
+      closeModal("modal"); draw(); toast("Show scheduled (prototype: resets on reload)");
+    };
+    draw();
+  </script>
+</body>
+</html>

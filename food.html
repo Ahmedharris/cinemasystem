@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Add Refreshments — CineMax</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <div id="app-header"></div>
+  <main>
+    <div class="container">
+      <h1 class="page-title">Add refreshments <span class="muted small">(optional)</span></h1>
+      <div class="page-sub">Pre-order snacks and drinks — they'll be ready when you arrive.</div>
+
+      <div class="two-col">
+        <div>
+          <div class="tabs" id="cats"></div>
+          <div class="food-grid" id="food-grid"></div>
+        </div>
+
+        <div class="panel summary sticky">
+          <div class="title" id="s-movie"></div>
+          <div class="muted small mb" id="s-info"></div>
+          <div class="row"><span>Seats (<span id="s-count"></span>)</span><span id="s-seats-total"></span></div>
+          <div id="s-food"></div>
+          <div class="row total"><span>Total</span><span id="s-total"></span></div>
+          <a href="checkout.html" class="btn block mt">Continue to payment →</a>
+          <a href="seats.html" id="back" class="btn secondary block mt">← Change seats</a>
+        </div>
+      </div>
+    </div>
+  </main>
+  <div id="app-footer"></div>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    renderHeader("home");
+    const cart = getCart();
+    if (!cart || !cart.seats.length) location.replace("index.html");
+    const show = byId(SHOWS, cart.showId);
+    const movie = byId(MOVIES, show.movieId);
+    const screen = byId(SCREENS, show.screenId);
+    const cinema = byId(CINEMAS, screen.cinemaId);
+    $("#back").href = "seats.html?show=" + show.id;
+    $("#s-movie").textContent = movie.title;
+    $("#s-info").textContent = `${cinema.name} • ${screen.name} • ${fmtDate(show.date)} ${show.start}`;
+    const seatList = getSeats(screen.id);
+    const seatsTotal = cart.seats.reduce((a, id) => a + seatPrice(show, seatList.find(s => s.id === id).type), 0);
+    $("#s-count").textContent = cart.seats.join(", ");
+    $("#s-seats-total").textContent = money(seatsTotal);
+
+    const cats = ["All", ...new Set(FOOD_ITEMS.map(f => f.category))];
+    let cat = "All";
+    function drawCats() {
+      $("#cats").innerHTML = cats.map(c => `<button class="tab ${c === cat ? "active" : ""}" data-c="${c}">${c}</button>`).join("");
+      $$("#cats .tab").forEach(t => t.onclick = () => { cat = t.dataset.c; drawCats(); drawFood(); });
+    }
+    function drawFood() {
+      $("#food-grid").innerHTML = FOOD_ITEMS.filter(f => cat === "All" || f.category === cat).map(f => `
+        <div class="food-card">
+          <div class="ico">${f.icon}</div><h4>${f.name}</h4>
+          <div class="muted small">${f.desc}</div>
+          <div class="flex between mt"><strong>${money(f.price)}</strong>
+          ${f.available ? `<div class="qty"><button data-id="${f.id}" data-d="-1">−</button><span>${cart.food[f.id] || 0}</span><button data-id="${f.id}" data-d="1">+</button></div>`
+            : '<span class="badge bad">Unavailable</span>'}</div>
+        </div>`).join("");
+      $$(".qty button").forEach(b => b.onclick = () => {
+        const id = b.dataset.id, q = Math.max(0, Math.min(10, (cart.food[id] || 0) + Number(b.dataset.d)));
+        if (q) cart.food[id] = q; else delete cart.food[id];
+        setCart(cart); drawFood(); summary();
+      });
+    }
+    function summary() {
+      $("#s-food").innerHTML = Object.keys(cart.food).map(id => {
+        const f = byId(FOOD_ITEMS, id);
+        return `<div class="row"><span>${f.name} × ${cart.food[id]}</span><span>${money(f.price * cart.food[id])}</span></div>`;
+      }).join("");
+      $("#s-total").textContent = money(seatsTotal + foodTotal(cart.food));
+    }
+    drawCats(); drawFood(); summary();
+  </script>
+</body>
+</html>

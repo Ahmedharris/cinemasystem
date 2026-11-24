@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Customers — CineMax Admin</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="admin">
+  <main class="admin-main" id="admin-content">
+    <div class="panel">
+      <div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Joined</th><th>Bookings</th><th>Total spent</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+    </div>
+  </main>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script>
+    renderAdmin("customers", "Customers", "Registered customers and their booking history.");
+    const bookings = allBookings();
+    $("#rows").innerHTML = CUSTOMERS.map(c => {
+      const mine = bookings.filter(b => b.customer.email === c.email);
+      const spent = mine.filter(b => b.status === "CONFIRMED").reduce((a, b) => a + b.total, 0);
+      return `<tr><td>${c.id}</td><td><strong>${c.name}</strong></td><td>${c.email}</td><td>${c.phone}</td><td>${c.joined}</td><td>${mine.length}</td><td>${money(spent)}</td></tr>`;
+    }).join("");
+  </script>
+</body>
+</html>

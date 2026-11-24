@@ -1,64 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CineMax — Book Movie Tickets Online</title>
-  <link rel="stylesheet" href="assets/css/style.css">
-</head>
-<body>
-  <div id="app-header"></div>
-  <main>
-    <div class="container">
-      <section class="hero">
-        <h1>Your seat is waiting. 🍿</h1>
-        <p>Browse movies, pick your showtime, choose your exact seats and add refreshments — all in one booking.</p>
-        <a href="#movies" class="btn gold">Browse movies</a>
-      </section>
-
-      <h2 id="movies">Movies</h2>
-      <div class="tabs">
-        <button class="tab active" data-status="NOW_SHOWING">Now Showing</button>
-        <button class="tab" data-status="COMING_SOON">Coming Soon</button>
-      </div>
-
-      <div class="filters">
-        <input type="text" id="search" placeholder="Search by title...">
-        <select id="f-genre"><option value="">All genres</option></select>
-        <select id="f-lang"><option value="">All languages</option></select>
-        <select id="f-rating"><option value="">All ratings</option></select>
-      </div>
-
-      <div class="movie-grid" id="movie-grid"></div>
-    </div>
-  </main>
-  <div id="app-footer"></div>
-
-  <script src="assets/js/data.js"></script>
-  <script src="assets/js/app.js"></script>
-  <script>
-    renderHeader("home");
-    let status = "NOW_SHOWING";
-
-    // fill filters
-    GENRES.forEach(g => $("#f-genre").insertAdjacentHTML("beforeend", `<option value="${g.id}">${g.name}</option>`));
-    [...new Set(MOVIES.map(m => m.language))].forEach(l => $("#f-lang").insertAdjacentHTML("beforeend", `<option>${l}</option>`));
-    [...new Set(MOVIES.map(m => m.rating))].forEach(r => $("#f-rating").insertAdjacentHTML("beforeend", `<option>${r}</option>`));
-
-    function render() {
-      const q = $("#search").value.toLowerCase();
-      const g = $("#f-genre").value, l = $("#f-lang").value, r = $("#f-rating").value;
-      const list = MOVIES.filter(m => m.status === status &&
-        m.title.toLowerCase().includes(q) &&
-        (!g || m.genres.includes(Number(g))) && (!l || m.language === l) && (!r || m.rating === r));
-      $("#movie-grid").innerHTML = list.length ? list.map(movieCardHTML).join("") : '<div class="empty" style="grid-column:1/-1">No movies match your filters.</div>';
-    }
-    $$(".tab").forEach(t => t.onclick = () => {
-      $$(".tab").forEach(x => x.classList.remove("active"));
-      t.classList.add("active"); status = t.dataset.status; render();
-    });
-    ["search", "f-genre", "f-lang", "f-rating"].forEach(id => $("#" + id).addEventListener("input", render));
-    render();
-  </script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍿</text></svg>" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CineMax — Modern Cinema Management & Booking System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <script>
+      // When opened through Apache XAMPP (not Vite dev server), redirect smoothly to the built production app in dist/
+      if (window.location.port !== '5173' && !window.location.pathname.includes('/dist/')) {
+        if (window.location.protocol.startsWith('http')) {
+          const currentPath = window.location.pathname.replace(/\/index\.html$/, '').replace(/\/$/, '');
+          window.location.replace(currentPath + '/dist/' + window.location.hash);
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>

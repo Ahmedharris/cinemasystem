@@ -87,25 +87,8 @@
       $("#card-fields").style.display = r.value === "Card" ? "grid" : "none";
     });
 
-    $("#pay-form").onsubmit = e => {
-      e.preventDefault();
-      const result = $("#sim").value;
-      const method = $("input[name=method]:checked").value;
-      if (result === "FAILED") {
-        toast("Payment failed — your seats are not booked. Try again.");
-        $("#sim").value = "SUCCESS";
-        return;
-      }
-      const id = nextBookingId();
-      saveBooking({
-        id, customer: { name: $("#name").value, email: $("#email").value }, showId: show.id,
-        time: new Date().toISOString().slice(0, 16).replace("T", " "),
-        status: "CONFIRMED", seats, food, total,
-        payment: { method, status: "SUCCESS", ref: "TXN-" + Math.floor(10000 + Math.random() * 89999) }
-      });
-      store.set("cms_user", { name: $("#name").value, email: $("#email").value, phone: $("#phone").value });
-      clearCart();
-      location.href = "tickets.html?booking=" + id;
+    $("pay-form").onsubmit = e => {
+      e.prevent;
     };
   </script>
 </body>

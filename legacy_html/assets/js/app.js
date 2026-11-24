@@ -22,13 +22,17 @@ function statusBadge(status) {
   };
   return '<span class="badge ' + (map[status] || "") + '">' + status.replace("_", " ") + "</span>";
 }
-function toast(msg) {
+function escapeHTML(value) {
+  return String(value == null ? "" : value).replace(/[&<>'"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[ch]));
+}
+function toast(msg, type) {
   let t = $("#toast");
   if (!t) { t = document.createElement("div"); t.id = "toast"; document.body.appendChild(t); }
+  t.className = type ? type : "";
   t.textContent = msg;
   t.classList.add("show");
   clearTimeout(t._h);
-  t._h = setTimeout(() => t.classList.remove("show"), 2400);
+  t._h = setTimeout(() => t.classList.remove("show"), 2800);
 }
 
 /* ---------- poster (no image files needed in the prototype) ---------- */
@@ -91,6 +95,15 @@ function saveBooking(b) {
   store.set("cms_bookings", list);
 }
 function nextBookingId() { return "BK-" + (1009 + store.get("cms_bookings", []).length); }
+function updateBookingStatus(id, status, paymentStatus) {
+  const created = store.get("cms_bookings", []);
+  const index = created.findIndex(b => b.id === id);
+  if (index >= 0) {
+    created[index].status = status;
+    if (paymentStatus) created[index].payment.status = paymentStatus;
+    store.set("cms_bookings", created);
+  }
+}
 
 /* ---------- customer site header / footer ---------- */
 function renderHeader(active) {
@@ -101,18 +114,23 @@ function renderHeader(active) {
     ["food", "menu.html", "Food Menu"],
     ["bookings", "my-bookings.html", "My Bookings"]
   ];
-  let html = '<header class="site-header"><div class="container"><a class="brand" href="index.html">Cine<span>Max</span></a><nav class="nav">';
-  links.forEach(l => { html += '<a href="' + l[1] + '"' + (active === l[0] ? ' class="active"' : "") + ">" + l[2] + "</a>"; });
+  let html = '<header class="site-header"><div class="container"><a class="brand" href="index.html" aria-label="CineMax home">Cine<span>Max</span></a><button class="nav-toggle" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Toggle navigation">☰</button><nav class="nav" id="main-nav">';
+  links.forEach(l => { html += '<a href="' + l[1] + '"' + (active === l[0] ? ' class="active" aria-current="page"' : "") + ">" + l[2] + "</a>"; });
   if (user) {
-    html += '<a href="#" onclick="logout();return false;">Logout (' + user.name.split(" ")[0] + ")</a>";
+    html += '<a href="#" onclick="logout();return false;" title="Log out">Logout (' + escapeHTML(user.name.split(" ")[0]) + ")</a>";
   } else {
-    html += '<a href="login.html"' + (active === "login" ? ' class="active"' : "") + '>Login</a><a class="btn" href="register.html">Sign up</a>';
+    html += '<a href="login.html"' + (active === "login" ? ' class="active" aria-current="page"' : "") + '>Login</a><a class="btn" href="register.html">Sign up</a>';
   }
   html += '</nav></div></header>';
   const el = $("#app-header");
   if (el) el.outerHTML = html;
+  const toggle = $(".nav-toggle");
+  if (toggle) toggle.onclick = () => {
+    const open = document.body.classList.toggle("nav-open");
+    toggle.setAttribute("aria-expanded", String(open));
+  };
   const f = $("#app-footer");
-  if (f) f.outerHTML = '<footer class="site-footer"><div class="container">CineMax Cinema Management System — DBMS Project prototype (front-end only) • <a href="admin/index.html" style="text-decoration:underline">Admin panel</a></div></footer>';
+  if (f) f.outerHTML = '<footer class="site-footer"><div class="container">CineMax Cinema Management System • <a href="admin/index.html" style="text-decoration:underline">Admin panel</a></div></footer>';
 }
 function logout() { store.del("cms_user"); location.href = "index.html"; }
 

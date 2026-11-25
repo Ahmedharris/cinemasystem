@@ -116,6 +116,9 @@ CREATE TABLE screen (
   screen_name   VARCHAR(60) NOT NULL,
   screen_type   ENUM('STANDARD','3D','IMAX','VIP') NOT NULL DEFAULT 'STANDARD',
   screen_status ENUM('ACTIVE','MAINTENANCE','CLOSED') NOT NULL DEFAULT 'ACTIVE',
+  rows_count    TINYINT UNSIGNED NOT NULL DEFAULT 8,
+  columns_count TINYINT UNSIGNED NOT NULL DEFAULT 12,
+  total_seats   INT UNSIGNED NOT NULL DEFAULT 96,
   UNIQUE KEY uq_screen_name (cinema_id, screen_name),
   CONSTRAINT fk_screen_cinema FOREIGN KEY (cinema_id) REFERENCES cinema (cinema_id)
 ) ENGINE=InnoDB;

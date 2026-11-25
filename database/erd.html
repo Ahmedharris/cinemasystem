@@ -164,6 +164,9 @@
     varchar screen_name
     enum screen_type
     enum screen_status
+    tinyint rows_count
+    tinyint columns_count
+    int total_seats
   }
   SEAT {
     int seat_id PK
@@ -364,6 +367,9 @@
     varchar screen_name
     enum screen_type
     enum screen_status
+    tinyint rows_count
+    tinyint columns_count
+    int total_seats
   }
   SEAT_CATEGORY {
     int seat_category_id PK
@@ -589,8 +595,8 @@
       <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>review_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>movie_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ movie default NULL</td></tr><tr><td><code>user_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ user_account default NULL</td></tr><tr><td><code>rating</code></td><td>tinyint(3) unsigned</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>review_text</code></td><td>varchar(1000)</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>created_at</code></td><td>datetime</td><td></td><td>no</td><td> default current_timestamp()</td></tr></tbody></table></details>
 <h3>3. Cinema Infrastructure</h3><details><summary><strong>cinema</strong> <span class="muted">(6 columns)</span></summary>
       <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>cinema_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>cinema_name</code></td><td>varchar(120)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>city</code></td><td>varchar(80)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>address</code></td><td>varchar(255)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>contact_number</code></td><td>varchar(30)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>cinema_status</code></td><td>enum('ACTIVE','CLOSED')</td><td></td><td>no</td><td> default 'ACTIVE'</td></tr></tbody></table></details>
-<details><summary><strong>screen</strong> <span class="muted">(5 columns)</span></summary>
-      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>screen_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>cinema_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ cinema default NULL</td></tr><tr><td><code>screen_name</code></td><td>varchar(60)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>screen_type</code></td><td>enum('STANDARD','3D','IMAX','VIP')</td><td></td><td>no</td><td> default 'STANDARD'</td></tr><tr><td><code>screen_status</code></td><td>enum('ACTIVE','MAINTENANCE','CLOSED')</td><td></td><td>no</td><td> default 'ACTIVE'</td></tr></tbody></table></details>
+<details><summary><strong>screen</strong> <span class="muted">(8 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>screen_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>cinema_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ cinema default NULL</td></tr><tr><td><code>screen_name</code></td><td>varchar(60)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>screen_type</code></td><td>enum('STANDARD','3D','IMAX','VIP')</td><td></td><td>no</td><td> default 'STANDARD'</td></tr><tr><td><code>screen_status</code></td><td>enum('ACTIVE','MAINTENANCE','CLOSED')</td><td></td><td>no</td><td> default 'ACTIVE'</td></tr><tr><td><code>rows_count</code></td><td>tinyint(3) unsigned</td><td></td><td>no</td><td> default 8</td></tr><tr><td><code>columns_count</code></td><td>tinyint(3) unsigned</td><td></td><td>no</td><td> default 12</td></tr><tr><td><code>total_seats</code></td><td>int(10) unsigned</td><td></td><td>no</td><td> default 96</td></tr></tbody></table></details>
 <details><summary><strong>seat_category</strong> <span class="muted">(3 columns)</span></summary>
       <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>seat_category_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>category_name</code></td><td>varchar(40)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>price_multiplier</code></td><td>decimal(4,2)</td><td></td><td>no</td><td> default 1.00</td></tr></tbody></table></details>
 <details><summary><strong>seat</strong> <span class="muted">(6 columns)</span></summary>

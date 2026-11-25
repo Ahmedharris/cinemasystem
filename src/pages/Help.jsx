@@ -81,7 +81,7 @@ export default function Help() {
           </form>
           <div className="card card-pad space-y-3 text-sm text-fg2">
             <div className="flex gap-3"><Phone size={16} className="text-gold mt-0.5" /> 042-111-246-362</div>
-            <div className="flex gap-3"><Mail size={16} className="text-gold mt-0.5" /> support@cinemax.pk</div>
+            <div className="flex gap-3"><Mail size={16} className="text-gold mt-0.5" /> support@qissa.pk</div>
             <div className="flex gap-3"><Clock size={16} className="text-gold mt-0.5" /> Daily, 10:00 – 23:00</div>
           </div>
         </div>

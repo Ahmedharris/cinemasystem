@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CineMax - Enhanced ERD</title>
+<title>QISSA - Enhanced ERD</title>
 <style>
  body{font-family:"Segoe UI",Arial,sans-serif;margin:0;background:#f5f6fa;color:#1c2030}
  header{background:#0f1117;color:#fff;padding:22px 32px}
@@ -22,7 +22,7 @@
  .legend{font-size:.85rem;background:#f8f9fc;border:1px dashed #cfd3e2;padding:10px 14px;border-radius:8px;margin-bottom:10px}
  @media print{nav{display:none} section{break-inside:avoid-page;border:0;margin:0}.diagram{overflow:visible} details{display:block} details>*{display:block}}
 </style></head><body>
-<header><h1>CineMax Cinema Management System - Enhanced ERD <span class="pill">20 entities</span></h1>
+<header><h1>QISSA Cinema Management System - Enhanced ERD <span class="pill">20 entities</span></h1>
 <p>Production-ready design for online + counter ticketing, scheduling, payments, food, promotions and administration. Generated from <code>schema.sql</code> (MySQL / MariaDB).</p></header>
 <nav><a href="#overview">Complete ERD</a><a href="#changes">What changed</a>
 <a href="#users">1. Users & Security</a><a href="#catalogue">2. Movie Catalogue</a><a href="#infra">3. Cinema Infrastructure</a><a href="#scheduling">4. Scheduling & Pricing</a><a href="#booking">5. Booking, Payment & Promotions</a><a href="#food">6. Food & Beverage</a>
@@ -164,6 +164,9 @@
     varchar screen_name
     enum screen_type
     enum screen_status
+    tinyint rows_count
+    tinyint columns_count
+    int total_seats
   }
   SEAT {
     int seat_id PK
@@ -368,6 +371,9 @@
     varchar screen_name
     enum screen_type
     enum screen_status
+    tinyint rows_count
+    tinyint columns_count
+    int total_seats
   }
   SEAT_CATEGORY {
     int seat_category_id PK
@@ -593,8 +599,8 @@
       <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>review_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>movie_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ movie default NULL</td></tr><tr><td><code>user_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ user_account default NULL</td></tr><tr><td><code>rating</code></td><td>tinyint(3) unsigned</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>review_text</code></td><td>varchar(1000)</td><td></td><td>yes</td><td> default NULL</td></tr><tr><td><code>created_at</code></td><td>datetime</td><td></td><td>no</td><td> default current_timestamp()</td></tr></tbody></table></details>
 <h3>3. Cinema Infrastructure</h3><details><summary><strong>cinema</strong> <span class="muted">(6 columns)</span></summary>
       <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>cinema_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>cinema_name</code></td><td>varchar(120)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>city</code></td><td>varchar(80)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>address</code></td><td>varchar(255)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>contact_number</code></td><td>varchar(30)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>cinema_status</code></td><td>enum('ACTIVE','CLOSED')</td><td></td><td>no</td><td> default 'ACTIVE'</td></tr></tbody></table></details>
-<details><summary><strong>screen</strong> <span class="muted">(5 columns)</span></summary>
-      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>screen_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>cinema_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ cinema default NULL</td></tr><tr><td><code>screen_name</code></td><td>varchar(60)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>screen_type</code></td><td>enum('STANDARD','3D','IMAX','VIP')</td><td></td><td>no</td><td> default 'STANDARD'</td></tr><tr><td><code>screen_status</code></td><td>enum('ACTIVE','MAINTENANCE','CLOSED')</td><td></td><td>no</td><td> default 'ACTIVE'</td></tr></tbody></table></details>
+<details><summary><strong>screen</strong> <span class="muted">(8 columns)</span></summary>
+      <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>screen_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>cinema_id</code></td><td>int(10) unsigned</td><td>FK</td><td>no</td><td>→ cinema default NULL</td></tr><tr><td><code>screen_name</code></td><td>varchar(60)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>screen_type</code></td><td>enum('STANDARD','3D','IMAX','VIP')</td><td></td><td>no</td><td> default 'STANDARD'</td></tr><tr><td><code>screen_status</code></td><td>enum('ACTIVE','MAINTENANCE','CLOSED')</td><td></td><td>no</td><td> default 'ACTIVE'</td></tr><tr><td><code>rows_count</code></td><td>tinyint(3) unsigned</td><td></td><td>no</td><td> default 8</td></tr><tr><td><code>columns_count</code></td><td>tinyint(3) unsigned</td><td></td><td>no</td><td> default 12</td></tr><tr><td><code>total_seats</code></td><td>int(10) unsigned</td><td></td><td>no</td><td> default 96</td></tr></tbody></table></details>
 <details><summary><strong>seat_category</strong> <span class="muted">(3 columns)</span></summary>
       <table><thead><tr><th>Column</th><th>Type</th><th>Key</th><th>Null</th><th>Notes</th></tr></thead><tbody><tr><td><code>seat_category_id</code></td><td>int(10) unsigned</td><td>PK</td><td>no</td><td> auto</td></tr><tr><td><code>category_name</code></td><td>varchar(40)</td><td></td><td>no</td><td> default NULL</td></tr><tr><td><code>price_multiplier</code></td><td>decimal(4,2)</td><td></td><td>no</td><td> default 1.00</td></tr></tbody></table></details>
 <details><summary><strong>seat</strong> <span class="muted">(6 columns)</span></summary>

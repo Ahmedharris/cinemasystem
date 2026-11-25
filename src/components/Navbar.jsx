@@ -5,11 +5,18 @@ import { useAuth } from '../context/AuthContext';
 import { Avatar } from './ui/Misc';
 import { useUI } from '../context/UIContext';
 
-export function Logo({ className = '' }) {
+export function Logo({ className = '', showTagline = true, alwaysShowTagline = false }) {
   return (
-    <Link to="/" className={`flex items-center gap-2.5 font-display font-bold text-xl ${className}`}>
-      <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-gold to-orange-500 text-[#17110a] flex items-center justify-center shadow-lg shadow-gold/20"><Clapperboard size={20} strokeWidth={2.4} /></span>
-      <span>Cine<span className="text-gold">Max</span></span>
+    <Link to="/" className={`flex items-center gap-2.5 shrink-0 ${className}`}>
+      <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-gold to-orange-500 text-[#17110a] flex items-center justify-center shadow-lg shadow-gold/20 shrink-0"><Clapperboard size={20} strokeWidth={2.4} /></span>
+      <span className="flex items-baseline gap-2 min-w-0">
+        <span className="font-display font-bold text-xl tracking-wide">QIS<span className="text-gold">SA</span></span>
+        {showTagline && (
+          <span className={`${alwaysShowTagline ? 'inline' : 'hidden sm:inline'} text-[11px] xl:text-xs font-medium text-fg2 whitespace-nowrap`}>
+            — Every Story Matters.
+          </span>
+        )}
+      </span>
     </Link>
   );
 }
@@ -19,7 +26,7 @@ const LINKS = [
   { to: '/cinemas', label: 'Cinemas' },
   { to: '/offers', label: 'Offers' },
   { to: '/menu', label: 'Food & Drinks' },
-  { to: '/help', label: 'Help' }
+  { to: '/help', label: 'Support' }
 ];
 
 export default function Navbar() {
@@ -48,13 +55,13 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 glass border-b border-line no-print">
       <div className="container-x h-16 flex items-center gap-4">
         <Logo />
-        <nav className="hidden lg:flex items-center gap-1 ml-6">
+        <nav className="hidden lg:flex items-center gap-1 ml-3 xl:ml-6">
           {LINKS.map((l) => <NavLink key={l.to} to={l.to} className={linkCls}>{l.label}</NavLink>)}
         </nav>
         <div className="flex-1" />
         <form onSubmit={search} className="relative hidden md:block">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-fg3" />
-          <input className="input input-sm pl-9 w-52 focus:w-72 transition-all" placeholder="Search movies…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search movies" />
+          <input className="input input-sm pl-9 w-40 xl:w-52 focus:w-64 xl:focus:w-72 transition-all" placeholder="Search movies…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search movies" />
         </form>
         {user ? (
           <div className="relative" ref={ref}>

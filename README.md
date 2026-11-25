@@ -1,4 +1,4 @@
-# CineMax – Cinema Management & Online Ticket Booking System
+# QISSA – Cinema Management & Online Ticket Booking System
 
 A React front end (`src/`) for the 20-entity cinema database in `database/schema.sql`
 (ERD: `database/erd.html`), and a Laravel + MySQL back end (`backend/`) that is being connected **module by module**.
@@ -30,10 +30,10 @@ Stack: React 18, Vite 5, Tailwind CSS v4, react-router (hash routes), lucide-rea
 | --- | --- |
 | Customer | `ali.raza@example.com`, `sara.khan@example.com`, `hamza.ahmed@example.com`, `ayesha.malik@example.com`, `usman.tariq@example.com` |
 | Customer (suspended) | `zainab.iqbal@example.com` |
-| Admin (all branches) | `admin@cinemax.pk` |
-| Manager (Lahore) | `manager.lahore@cinemax.pk` |
-| Box office (Lahore) | `boxoffice.lahore@cinemax.pk` |
-| Manager (Karachi) | `manager.karachi@cinemax.pk` |
+| Admin (all branches) | `admin@qissa.pk` |
+| Manager (Lahore) | `manager.lahore@qissa.pk` |
+| Box office (Lahore) | `boxoffice.lahore@qissa.pk` |
+| Manager (Karachi) | `manager.karachi@qissa.pk` |
 
 Promo codes: `WELCOME10`, `FAMILY300`, `STUDENT20` (active), `EIDSPECIAL` (expired), `WEEKEND15` (paused).
 

@@ -1,4 +1,4 @@
-# CineMax backend (Laravel 12 + MySQL)
+# QISSA backend (Laravel 12 + MySQL)
 
 REST API for the React front end in the parent folder. The database structure is **`../database/schema.sql`**
 (20 tables, see `../database/erd.html`). There are no Eloquent models and no migrations on purpose:

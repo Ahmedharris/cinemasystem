@@ -35,5 +35,5 @@ export function useStored(key, initial) {
 }
 
 export function useDocumentTitle(title) {
-  useEffect(() => { document.title = title ? `${title} · CineMax` : 'CineMax - Cinema Booking'; }, [title]);
+  useEffect(() => { document.title = title ? `${title} · QISSA — Every Story Matters.` : 'QISSA — Every Story Matters.'; }, [title]);
 }

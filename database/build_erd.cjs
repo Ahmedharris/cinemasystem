@@ -195,7 +195,7 @@ const overview = overviewDiagram();
 
 const html = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CineMax - Enhanced ERD</title>
+<title>QISSA - Enhanced ERD</title>
 <style>
  body{font-family:"Segoe UI",Arial,sans-serif;margin:0;background:#f5f6fa;color:#1c2030}
  header{background:#0f1117;color:#fff;padding:22px 32px}
@@ -217,7 +217,7 @@ const html = `<!DOCTYPE html>
  .legend{font-size:.85rem;background:#f8f9fc;border:1px dashed #cfd3e2;padding:10px 14px;border-radius:8px;margin-bottom:10px}
  @media print{nav{display:none} section{break-inside:avoid-page;border:0;margin:0}.diagram{overflow:visible} details{display:block} details>*{display:block}}
 </style></head><body>
-<header><h1>CineMax Cinema Management System - Enhanced ERD <span class="pill">${total} entities</span></h1>
+<header><h1>QISSA Cinema Management System - Enhanced ERD <span class="pill">${total} entities</span></h1>
 <p>Production-ready design for online + counter ticketing, scheduling, payments, food, promotions and administration. Generated from <code>schema.sql</code> (MySQL / MariaDB).</p></header>
 <nav><a href="#overview">Complete ERD</a><a href="#changes">What changed</a>
 ${MODULES.map(m => `<a href="#${m.id}">${m.title}</a>`).join("")}

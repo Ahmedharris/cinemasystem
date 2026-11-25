@@ -14,7 +14,7 @@ export default function TicketCard({ full, entry }) {
       <div className="ticket-main">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-[10px] font-bold tracking-[.18em] text-[#b7791f] uppercase">CineMax · {SCREEN_TYPE_LABEL[screen.screen_type]}</div>
+            <div className="text-[10px] font-bold tracking-[.18em] text-[#b7791f] uppercase">QISSA · {SCREEN_TYPE_LABEL[screen.screen_type]}</div>
             <h4 className="font-display text-xl font-bold leading-tight mt-0.5 truncate">{movie.title}</h4>
           </div>
           <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${status === 'VALID' ? 'text-emerald-700 border-emerald-300 bg-emerald-50' : status === 'USED' ? 'text-sky-700 border-sky-300 bg-sky-50' : status === 'HELD' ? 'text-amber-700 border-amber-300 bg-amber-50' : 'text-rose-700 border-rose-300 bg-rose-50'}`}>{status === 'USED' ? 'CHECKED IN' : status}</span>

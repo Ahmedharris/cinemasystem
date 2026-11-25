@@ -71,7 +71,7 @@ export default function BookingView() {
 
   return (
     <div className="container-x py-8 sm:py-10 max-w-6xl">
-      <div className="print-only mb-4"><h1 className="text-2xl font-bold">CineMax e-ticket</h1></div>
+      <div className="print-only mb-4"><h1 className="text-2xl font-bold">QISSA e-ticket</h1></div>
       <div className={`rounded-2xl border p-5 sm:p-6 flex flex-wrap items-center gap-4 ${{ ok: 'border-ok/30 bg-ok/8', warn: 'border-warn/30 bg-warn/8', bad: 'border-bad/30 bg-bad/8' }[banner.tone]} no-print`}>
         <banner.icon size={34} className={{ ok: 'text-ok', warn: 'text-warn', bad: 'text-bad' }[banner.tone]} />
         <div className="flex-1 min-w-[12rem]">

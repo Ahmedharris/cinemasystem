@@ -180,8 +180,8 @@ class AuthController extends Controller
         $link = rtrim(config('app.frontend_url'), '/').'/#/reset-password?'.http_build_query(['email' => $user->email, 'token' => $token]);
         try {
             Mail::raw(
-                "Hello {$user->full_name},\n\nUse this link to choose a new CineMax password (valid for 60 minutes):\n{$link}\n\nIf you did not ask for this, ignore this e-mail.",
-                fn ($mail) => $mail->to($user->email)->subject('Reset your CineMax password')
+                "Hello {$user->full_name},\n\nUse this link to choose a new QISSA password (valid for 60 minutes):\n{$link}\n\nIf you did not ask for this, ignore this e-mail.",
+                fn ($mail) => $mail->to($user->email)->subject('Reset your QISSA password')
             );
         } catch (\Throwable $e) {
             Log::warning('Could not send password reset e-mail: '.$e->getMessage());

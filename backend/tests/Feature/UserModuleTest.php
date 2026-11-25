@@ -21,7 +21,7 @@ class UserModuleTest extends TestCase
         $this->withoutMiddleware(ThrottleRequests::class);
     }
 
-    private function login(string $email = 'admin@cinemax.pk', string $password = 'demo1234'): array
+    private function login(string $email = 'admin@qissa.pk', string $password = 'demo1234'): array
     {
         $res = $this->postJson('/api/auth/login', compact('email', 'password'));
         $res->assertOk();
@@ -36,7 +36,7 @@ class UserModuleTest extends TestCase
 
     public function test_login_returns_token_and_profile_without_secrets(): void
     {
-        [$token, $user] = $this->login('manager.lahore@cinemax.pk');
+        [$token, $user] = $this->login('manager.lahore@qissa.pk');
         $this->assertNotEmpty($token);
         $this->assertSame('MANAGER', $user['role']);
         $this->assertSame(1, $user['cinema_id']);
@@ -48,7 +48,7 @@ class UserModuleTest extends TestCase
 
     public function test_wrong_password_unknown_email_and_suspended_account_are_rejected(): void
     {
-        $this->postJson('/api/auth/login', ['email' => 'admin@cinemax.pk', 'password' => 'nope'])->assertStatus(401);
+        $this->postJson('/api/auth/login', ['email' => 'admin@qissa.pk', 'password' => 'nope'])->assertStatus(401);
         $this->postJson('/api/auth/login', ['email' => 'ghost@example.com', 'password' => 'demo1234'])->assertStatus(401);
         $this->postJson('/api/auth/login', ['email' => 'zainab.iqbal@example.com', 'password' => 'demo1234'])
             ->assertStatus(403)->assertJsonPath('message', 'This account is suspended. Please contact support.');
@@ -115,7 +115,7 @@ class UserModuleTest extends TestCase
     public function test_only_administrators_can_manage_users(): void
     {
         [$customer] = $this->login('ali.raza@example.com');
-        [$manager] = $this->login('manager.lahore@cinemax.pk');
+        [$manager] = $this->login('manager.lahore@qissa.pk');
         $this->as($customer)->getJson('/api/users')->assertStatus(403);
         $this->as($manager)->getJson('/api/users')->assertStatus(403);
         $this->as($manager)->getJson('/api/audit-logs')->assertStatus(403);
@@ -129,28 +129,28 @@ class UserModuleTest extends TestCase
 
         $list = $this->as($admin)->getJson('/api/users')->assertOk();
         $this->assertGreaterThanOrEqual(10, count($list->json('users')));
-        $this->assertSame('CineMax Gulberg', collect($list->json('users'))->firstWhere('user_id', 7)['cinema_name']);
+        $this->assertSame('QISSA Gulberg', collect($list->json('users'))->firstWhere('user_id', 7)['cinema_name']);
 
         // branch staff must have a cinema
-        $new = ['full_name' => 'Fatima Noor', 'email' => 'fatima.noor@cinemax.pk', 'role' => 'BOX_OFFICE', 'password' => 'staff123', 'account_status' => 'ACTIVE'];
+        $new = ['full_name' => 'Fatima Noor', 'email' => 'fatima.noor@qissa.pk', 'role' => 'BOX_OFFICE', 'password' => 'staff123', 'account_status' => 'ACTIVE'];
         $this->as($admin)->postJson('/api/users', $new)->assertStatus(422)->assertJsonValidationErrors(['cinema_id']);
         $created = $this->as($admin)->postJson('/api/users', $new + ['cinema_id' => 3])->assertCreated();
         $id = $created->json('user.user_id');
         $this->assertSame(3, $created->json('user.cinema_id'));
-        $this->postJson('/api/auth/login', ['email' => 'fatima.noor@cinemax.pk', 'password' => 'staff123'])->assertOk();
+        $this->postJson('/api/auth/login', ['email' => 'fatima.noor@qissa.pk', 'password' => 'staff123'])->assertOk();
 
         // duplicate e-mail
         $this->as($admin)->postJson('/api/users', $new + ['cinema_id' => 3])->assertStatus(422);
 
         // changing the role to ADMIN drops the branch; suspension blocks sign-in and live sessions
-        [$staffToken] = $this->login('fatima.noor@cinemax.pk', 'staff123');
-        $upd = $this->as($admin)->putJson("/api/users/$id", ['full_name' => 'Fatima Noor', 'email' => 'fatima.noor@cinemax.pk', 'phone' => '', 'role' => 'ADMIN', 'cinema_id' => 3, 'account_status' => 'SUSPENDED'])->assertOk();
+        [$staffToken] = $this->login('fatima.noor@qissa.pk', 'staff123');
+        $upd = $this->as($admin)->putJson("/api/users/$id", ['full_name' => 'Fatima Noor', 'email' => 'fatima.noor@qissa.pk', 'phone' => '', 'role' => 'ADMIN', 'cinema_id' => 3, 'account_status' => 'SUSPENDED'])->assertOk();
         $this->assertNull($upd->json('user.cinema_id'));
         $this->as($staffToken)->getJson('/api/auth/me')->assertStatus(401);
-        $this->postJson('/api/auth/login', ['email' => 'fatima.noor@cinemax.pk', 'password' => 'staff123'])->assertStatus(403);
+        $this->postJson('/api/auth/login', ['email' => 'fatima.noor@qissa.pk', 'password' => 'staff123'])->assertStatus(403);
 
         // an admin cannot demote or suspend themselves, or delete their own account
-        $this->as($admin)->putJson('/api/users/'.$me['user_id'], ['full_name' => 'System Admin', 'email' => 'admin@cinemax.pk', 'role' => 'MANAGER', 'cinema_id' => 1, 'account_status' => 'ACTIVE'])->assertStatus(422);
+        $this->as($admin)->putJson('/api/users/'.$me['user_id'], ['full_name' => 'System Admin', 'email' => 'admin@qissa.pk', 'role' => 'MANAGER', 'cinema_id' => 1, 'account_status' => 'ACTIVE'])->assertStatus(422);
         $this->as($admin)->deleteJson('/api/users/'.$me['user_id'])->assertStatus(422);
 
         // temporary password

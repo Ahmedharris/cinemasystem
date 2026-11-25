@@ -10,6 +10,16 @@ export default defineConfig({
   base: './',
   server: {
     port: 5173,
-    open: false
+    open: false,
+    proxy: {
+      '/cinemasystem/api': {
+        target: 'http://localhost',
+        changeOrigin: true
+      },
+      '/api': {
+        target: 'http://localhost/cinemasystem',
+        changeOrigin: true
+      }
+    }
   }
 });

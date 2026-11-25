@@ -16,9 +16,9 @@ class UsersSeeder extends Seeder
     public function run(): void
     {
         $cinemas = [
-            [1, 'CineMax Gulberg', 'Lahore', 'MM Alam Road, Gulberg III', '042-111-246-362'],
-            [2, 'CineMax DHA', 'Karachi', 'Zamzama Boulevard, Phase 5, DHA', '021-111-246-362'],
-            [3, 'CineMax F-7', 'Islamabad', 'Jinnah Super Market, F-7 Markaz', '051-111-246-362'],
+            [1, 'QISSA Gulberg', 'Lahore', 'MM Alam Road, Gulberg III', '042-111-246-362'],
+            [2, 'QISSA DHA', 'Karachi', 'Zamzama Boulevard, Phase 5, DHA', '021-111-246-362'],
+            [3, 'QISSA F-7', 'Islamabad', 'Jinnah Super Market, F-7 Markaz', '051-111-246-362'],
         ];
         foreach ($cinemas as [$id, $name, $city, $address, $phone]) {
             DB::insert(
@@ -37,10 +37,10 @@ class UsersSeeder extends Seeder
             [3, 'CUSTOMER', null, 'Hamza Ahmed', 'hamza.ahmed@example.com', '0321-3334455', 'ACTIVE', 45],
             [4, 'CUSTOMER', null, 'Ayesha Malik', 'ayesha.malik@example.com', '0333-4445566', 'ACTIVE', 30],
             [5, 'CUSTOMER', null, 'Usman Tariq', 'usman.tariq@example.com', '0345-5556677', 'ACTIVE', 12],
-            [6, 'ADMIN', null, 'System Admin', 'admin@cinemax.pk', '042-111-246-362', 'ACTIVE', 200],
-            [7, 'MANAGER', 1, 'Nadia Hussain', 'manager.lahore@cinemax.pk', '0300-7000001', 'ACTIVE', 150],
-            [8, 'BOX_OFFICE', 1, 'Bilal Sheikh', 'boxoffice.lahore@cinemax.pk', '0300-7000002', 'ACTIVE', 120],
-            [9, 'MANAGER', 2, 'Omar Farooq', 'manager.karachi@cinemax.pk', '0300-7000003', 'ACTIVE', 140],
+            [6, 'ADMIN', null, 'System Admin', 'admin@qissa.pk', '042-111-246-362', 'ACTIVE', 200],
+            [7, 'MANAGER', 1, 'Nadia Hussain', 'manager.lahore@qissa.pk', '0300-7000001', 'ACTIVE', 150],
+            [8, 'BOX_OFFICE', 1, 'Bilal Sheikh', 'boxoffice.lahore@qissa.pk', '0300-7000002', 'ACTIVE', 120],
+            [9, 'MANAGER', 2, 'Omar Farooq', 'manager.karachi@qissa.pk', '0300-7000003', 'ACTIVE', 140],
             [10, 'CUSTOMER', null, 'Zainab Iqbal', 'zainab.iqbal@example.com', '0302-8889900', 'SUSPENDED', 50],
         ];
 

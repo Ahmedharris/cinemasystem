@@ -6,7 +6,7 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
-| CineMax REST API  (all routes are prefixed with /api)
+| QISSA REST API  (all routes are prefixed with /api)
 |
 | Module 1 - Users & Security
 */

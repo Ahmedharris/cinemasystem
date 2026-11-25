@@ -72,7 +72,7 @@ export function downloadCSV(filename, rows) {
 export function downloadICS({ title, start, end, location, description, uid }) {
   const f = (s) => s.replace(/[-: ]/g, '').slice(0, 15);
   const ics = [
-    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//CineMax//Booking//EN', 'BEGIN:VEVENT', `UID:${uid}@cinemax.pk`,
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//QISSA//Booking//EN', 'BEGIN:VEVENT', `UID:${uid}@qissa.pk`,
     `DTSTAMP:${f(new Date().toISOString().replace('T', ' ').slice(0, 19))}Z`, `DTSTART:${f(start)}`, `DTEND:${f(end)}`,
     `SUMMARY:${title}`, `LOCATION:${location}`, `DESCRIPTION:${description}`, 'END:VEVENT', 'END:VCALENDAR'
   ].join('\r\n');

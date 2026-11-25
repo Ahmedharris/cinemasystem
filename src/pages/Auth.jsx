@@ -17,7 +17,7 @@ function Shell({ title, subtitle, children, footer }) {
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="hidden lg:flex relative overflow-hidden flex-col justify-between p-12 bg-gradient-to-br from-[#1c1608] via-panel to-ink border-r border-line">
         <div className="hero-glow" />
-        <Logo className="relative" />
+        <Logo className="relative" alwaysShowTagline />
         <div className="relative">
           <div className="grid grid-cols-3 gap-3 -rotate-6 scale-105 opacity-90 mb-12 w-[88%]">
             {movies.map((m) => <Poster key={m.movie_id} movie={m} showTitle={false} className="!rounded-xl shadow-2xl" />)}
@@ -25,7 +25,7 @@ function Shell({ title, subtitle, children, footer }) {
           <h2 className="text-4xl font-bold leading-tight">Your seat is waiting.</h2>
           <p className="text-fg2 mt-3 max-w-sm">Pick your seats, pre-order snacks and walk straight in with a QR ticket.</p>
         </div>
-        <div className="relative text-xs text-fg3">© CineMax · Cinema Management & Online Ticket Booking</div>
+        <div className="relative text-xs text-fg3">© QISSA — Every Story Matters. · Cinema Management & Online Ticket Booking</div>
       </div>
       <div className="flex flex-col justify-center px-5 py-10 sm:px-12">
         <div className="w-full max-w-md mx-auto">
@@ -42,9 +42,9 @@ function Shell({ title, subtitle, children, footer }) {
 
 const DEMOS = [
   { email: 'ali.raza@example.com', label: 'Customer', name: 'Ali Raza', icon: Users },
-  { email: 'admin@cinemax.pk', label: 'Admin', name: 'System Admin', icon: Shield },
-  { email: 'manager.lahore@cinemax.pk', label: 'Manager · Lahore', name: 'Nadia Hussain', icon: Briefcase },
-  { email: 'boxoffice.lahore@cinemax.pk', label: 'Box office · Lahore', name: 'Bilal Sheikh', icon: TicketIcon }
+  { email: 'admin@qissa.pk', label: 'Admin', name: 'System Admin', icon: Shield },
+  { email: 'manager.lahore@qissa.pk', label: 'Manager · Lahore', name: 'Nadia Hussain', icon: Briefcase },
+  { email: 'boxoffice.lahore@qissa.pk', label: 'Box office · Lahore', name: 'Bilal Sheikh', icon: TicketIcon }
 ];
 
 export default function Login() {
@@ -75,7 +75,7 @@ export default function Login() {
   };
 
   return (
-    <Shell title="Welcome back" subtitle="Sign in to book tickets and manage your bookings." footer={<>New to CineMax? <Link to="/register" state={loc.state} className="text-gold font-semibold">Create an account</Link></>}>
+    <Shell title="Welcome back" subtitle="Sign in to book tickets and manage your bookings." footer={<>New to QISSA? <Link to="/register" state={loc.state} className="text-gold font-semibold">Create an account</Link></>}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         {error && <div className="rounded-xl border border-bad/30 bg-bad/10 text-bad text-sm px-4 py-2.5">{error}</div>}
         <Field label="Email">
@@ -133,7 +133,7 @@ export function Register() {
     setBusy(true);
     try {
       const u = await register({ full_name: f.full_name, email: f.email, phone: f.phone, password: f.password });
-      toast.success(`Welcome to CineMax, ${u.full_name.split(' ')[0]}!`);
+      toast.success(`Welcome to QISSA, ${u.full_name.split(' ')[0]}!`);
       const from = loc.state && loc.state.from;
       nav(from || '/', { replace: true, state: from ? { seats: loc.state.seats } : undefined });
     } catch (err) {
@@ -145,7 +145,7 @@ export function Register() {
   const bar = Math.min(4, (f.password.length >= 6) + (f.password.length >= 10) + /[A-Z]/.test(f.password) + /\d/.test(f.password) + /[^A-Za-z0-9]/.test(f.password));
 
   return (
-    <Shell title="Create your account" subtitle="Join CineMax to book seats, track tickets and write reviews." footer={<>Already have an account? <Link to="/login" state={loc.state} className="text-gold font-semibold">Sign in</Link></>}>
+    <Shell title="Create your account" subtitle="Join QISSA to book seats, track tickets and write reviews." footer={<>Already have an account? <Link to="/login" state={loc.state} className="text-gold font-semibold">Sign in</Link></>}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         <Field label="Full name" error={errs.full_name}><div className="relative"><User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fg3" /><input className={`input pl-10 ${errs.full_name ? 'input-error' : ''}`} value={f.full_name} onChange={set('full_name')} autoComplete="name" /></div></Field>
         <Field label="Email" error={errs.email}><div className="relative"><Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fg3" /><input className={`input pl-10 ${errs.email ? 'input-error' : ''}`} type="email" value={f.email} onChange={set('email')} autoComplete="email" /></div></Field>

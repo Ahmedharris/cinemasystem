@@ -58,7 +58,7 @@ export default function AdminLayout() {
 
   const sidebar = (
     <div className="h-full flex flex-col">
-      <div className="h-16 px-5 flex items-center border-b border-line shrink-0"><Logo /></div>
+      <div className="h-16 px-5 flex items-center border-b border-line shrink-0"><Logo showTagline={false} /></div>
       <nav className="flex-1 overflow-y-auto p-3 space-y-5">
         {NAV.map((g) => {
           const items = g.items.filter((i) => i.roles.includes(user.role));

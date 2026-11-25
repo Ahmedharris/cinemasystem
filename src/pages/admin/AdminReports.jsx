@@ -37,7 +37,7 @@ export default function AdminReports() {
   });
   const slotData = Object.entries(slots).sort().map(([label, v]) => ({ label, value: Math.round(v.sum / v.n) }));
 
-  const exportAll = () => downloadCSV(`cinemax-report-${days || 'all'}d`, [
+  const exportAll = () => downloadCSV(`qissa-report-${days || 'all'}d`, [
     ['Metric', 'Value'], ['Gross collected', pay.gross], ['Refunds', pay.refunds], ['Net revenue', pay.net], ['Tickets sold', tickets], ['Food revenue', foodRevenue], [],
     ['Movie', 'Tickets'], ...byMovie.map((m) => [m.label, m.value]), [],
     ['Customer', 'Bookings', 'Spent'], ...cust.list.map((c) => [c.label, c.bookings, c.value])

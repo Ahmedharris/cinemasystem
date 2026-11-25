@@ -19,7 +19,7 @@ const LINKS = [
   { to: '/cinemas', label: 'Cinemas' },
   { to: '/offers', label: 'Offers' },
   { to: '/menu', label: 'Food & Drinks' },
-  { to: '/help', label: 'Help' }
+  { to: '/help', label: 'Support' }
 ];
 
 export default function Navbar() {

@@ -18,7 +18,7 @@ import Offers from './pages/Offers';
 import FoodMenu from './pages/FoodMenu';
 import Help from './pages/Help';
 import NotFound from './pages/NotFound';
-import Login, { Register, ForgotPassword } from './pages/Auth';
+import Login, { Register, ForgotPassword, ResetPassword } from './pages/Auth';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminMovies from './pages/admin/AdminMovies';
@@ -65,6 +65,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />

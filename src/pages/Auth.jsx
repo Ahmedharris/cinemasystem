@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, Phone, CheckCircle2, Shield, Briefcase, Ticket as TicketIcon, Users, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useUI } from '../context/UIContext';
@@ -9,6 +9,7 @@ import { Field } from '../components/ui/Form';
 import { Spinner } from '../components/ui/Misc';
 import Poster from '../components/Poster';
 import { q } from '../lib/db';
+import { api, fieldErrors } from '../lib/api';
 
 function Shell({ title, subtitle, children, footer }) {
   const movies = q.movies().filter((m) => m.movie_status === 'NOW_SHOWING').slice(0, 6);
@@ -64,15 +65,13 @@ export default function Login() {
     if (from) nav(from, { replace: true, state: { seats: loc.state.seats } });
     else nav(u.role === 'CUSTOMER' ? '/' : '/admin', { replace: true });
   };
-  const submit = (e, creds) => {
+  const submit = async (e, creds) => {
     if (e) e.preventDefault();
     const em = creds ? creds.email : email, pw = creds ? creds.password : password;
     setError('');
     if (!em || !pw) { setError('Enter your email and password.'); return; }
     setBusy(true);
-    setTimeout(() => {
-      try { go(login(em, pw)); } catch (err) { setError(err.userMessage); setBusy(false); }
-    }, 350);
+    try { go(await login(em, pw)); } catch (err) { setError(err.userMessage || 'Could not sign in.'); setBusy(false); }
   };
 
   return (
@@ -119,7 +118,8 @@ export function Register() {
   const [errs, setErrs] = useState({});
   const set = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
 
-  const submit = (e) => {
+  const [busy, setBusy] = useState(false);
+  const submit = async (e) => {
     e.preventDefault();
     const er = {};
     if (f.full_name.trim().length < 3) er.full_name = 'Please enter your full name.';
@@ -130,12 +130,17 @@ export function Register() {
     if (!f.agree) er.agree = 'Please accept the terms.';
     setErrs(er);
     if (Object.keys(er).length) return;
+    setBusy(true);
     try {
-      const u = register({ full_name: f.full_name, email: f.email, phone: f.phone, password: f.password });
+      const u = await register({ full_name: f.full_name, email: f.email, phone: f.phone, password: f.password });
       toast.success(`Welcome to CineMax, ${u.full_name.split(' ')[0]}!`);
       const from = loc.state && loc.state.from;
       nav(from || '/', { replace: true, state: from ? { seats: loc.state.seats } : undefined });
-    } catch (err) { setErrs({ email: err.userMessage }); }
+    } catch (err) {
+      const server = fieldErrors(err);
+      setErrs(Object.keys(server).length ? server : { email: err.userMessage });
+      setBusy(false);
+    }
   };
   const bar = Math.min(4, (f.password.length >= 6) + (f.password.length >= 10) + /[A-Z]/.test(f.password) + /\d/.test(f.password) + /[^A-Za-z0-9]/.test(f.password));
 
@@ -154,7 +159,7 @@ export function Register() {
           <label className="flex items-start gap-3 text-sm text-fg2 cursor-pointer"><input type="checkbox" className="mt-1" checked={f.agree} onChange={set('agree')} /> I agree to the terms of use and privacy policy.</label>
           {errs.agree && <p className="field-error">{errs.agree}</p>}
         </div>
-        <button className="btn btn-primary btn-lg btn-block">Create account</button>
+        <button className="btn btn-primary btn-lg btn-block" disabled={busy}>{busy ? <Spinner /> : null} Create account</button>
       </form>
     </Shell>
   );
@@ -165,10 +170,17 @@ export function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState('');
-  const submit = (e) => {
+  const [busy, setBusy] = useState(false);
+  const [devLink, setDevLink] = useState('');
+  const submit = async (e) => {
     e.preventDefault();
     if (!/^\S+@\S+\.\S+$/.test(email)) { setErr('Enter a valid email address.'); return; }
-    setSent(true);
+    setBusy(true);
+    try {
+      const res = await api.post('/auth/forgot-password', { email: email.trim() });
+      setDevLink(res.reset_link || '');
+      setSent(true);
+    } catch (error) { setErr(error.userMessage || 'Could not send the reset link.'); } finally { setBusy(false); }
   };
   return (
     <Shell title="Reset your password" subtitle="We'll email you a link to choose a new password." footer={<Link to="/login" className="text-gold font-semibold">Back to sign in</Link>}>
@@ -176,14 +188,66 @@ export function ForgotPassword() {
         <div className="rounded-2xl border border-ok/30 bg-ok/10 p-6 text-center">
           <CheckCircle2 className="mx-auto text-ok mb-3" size={36} />
           <h3 className="font-semibold">Check your inbox</h3>
-          <p className="text-sm text-fg2 mt-1.5">If an account exists for <b>{email}</b>, a reset link is on its way. (Demo: no email is actually sent.)</p>
+          <p className="text-sm text-fg2 mt-1.5">If an account exists for <b>{email}</b>, a reset link is on its way. The link is valid for 60 minutes.</p>
+          {devLink && (
+            <div className="mt-4 rounded-xl border border-dashed border-line2 p-3 text-left">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-fg3 mb-1.5">Development mode · no mail server</div>
+              <a href={devLink} className="text-gold text-sm font-semibold break-all underline">Open the reset link</a>
+            </div>
+          )}
         </div>
       ) : (
         <form onSubmit={submit} className="space-y-4" noValidate>
           <Field label="Email" error={err}><div className="relative"><Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fg3" /><input className={`input pl-10 ${err ? 'input-error' : ''}`} value={email} onChange={(e) => { setEmail(e.target.value); setErr(''); }} /></div></Field>
-          <button className="btn btn-primary btn-lg btn-block">Send reset link</button>
+          <button className="btn btn-primary btn-lg btn-block" disabled={busy}>{busy ? <Spinner /> : null} Send reset link</button>
         </form>
       )}
+    </Shell>
+  );
+}
+
+export function ResetPassword() {
+  useDocumentTitle('Choose a new password');
+  const nav = useNavigate();
+  const { toast } = useUI();
+  const [params] = useSearchParams();
+  const email = params.get('email') || '';
+  const token = params.get('token') || '';
+  const [f, setF] = useState({ password: '', again: '' });
+  const [errs, setErrs] = useState({});
+  const [busy, setBusy] = useState(false);
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+
+  const submit = async (e) => {
+    e.preventDefault();
+    const er = {};
+    if (f.password.length < 6) er.password = 'Use at least 6 characters.';
+    if (f.password !== f.again) er.again = 'Passwords do not match.';
+    setErrs(er);
+    if (Object.keys(er).length) return;
+    setBusy(true);
+    try {
+      await api.post('/auth/reset-password', { email, token, password: f.password });
+      toast.success('Password changed. Please sign in.');
+      nav('/login', { replace: true });
+    } catch (err) { setErrs({ form: err.userMessage || 'Could not change the password.' }); setBusy(false); }
+  };
+
+  if (!email || !token) {
+    return (
+      <Shell title="Link not valid" subtitle="This password reset link is incomplete." footer={<Link to="/login" className="text-gold font-semibold">Back to sign in</Link>}>
+        <Link to="/forgot-password" className="btn btn-primary btn-lg btn-block">Request a new link</Link>
+      </Shell>
+    );
+  }
+  return (
+    <Shell title="Choose a new password" subtitle={<>for <b className="text-fg">{email}</b></>} footer={<Link to="/login" className="text-gold font-semibold">Back to sign in</Link>}>
+      <form onSubmit={submit} className="space-y-4" noValidate>
+        {errs.form && <div className="rounded-xl border border-bad/30 bg-bad/10 text-bad text-sm px-4 py-2.5">{errs.form} <Link to="/forgot-password" className="underline font-semibold">Request a new link</Link></div>}
+        <Field label="New password" error={errs.password}><input className={`input ${errs.password ? 'input-error' : ''}`} type="password" value={f.password} onChange={set('password')} autoComplete="new-password" autoFocus /></Field>
+        <Field label="Repeat new password" error={errs.again}><input className={`input ${errs.again ? 'input-error' : ''}`} type="password" value={f.again} onChange={set('again')} autoComplete="new-password" /></Field>
+        <button className="btn btn-primary btn-lg btn-block" disabled={busy}>{busy ? <Spinner /> : null} Change password</button>
+      </form>
     </Shell>
   );
 }

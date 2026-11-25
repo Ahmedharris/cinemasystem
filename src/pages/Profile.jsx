@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Lock, Ticket, Star, Wallet } from 'lucide-react';
 import { useDb, useDocumentTitle } from '../hooks/useDb';
 import { q } from '../lib/db';
+import { fieldErrors } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useUI } from '../context/UIContext';
 import { Avatar, EmptyState, PageHeader, StatusBadge } from '../components/ui/Misc';
@@ -23,24 +24,23 @@ export default function Profile() {
   const spent = mine.reduce((a, b) => a + b.total_amount, 0);
   const reviews = q.movies().reduce((n, m) => n + q.reviewsOf(m.movie_id).filter((r) => r.user_id === user.user_id).length, 0);
 
-  const saveProfile = (e) => {
+  const saveProfile = async (e) => {
     e.preventDefault();
     const er = {};
     if (form.full_name.trim().length < 3) er.full_name = 'Please enter your full name.';
     if (form.phone && !/^[0-9+\-\s]{7,15}$/.test(form.phone)) er.phone = 'Enter a valid phone number.';
     setErrs(er);
     if (Object.keys(er).length) return;
-    updateProfile(form);
-    toast.success('Profile updated.');
+    try { await updateProfile(form); toast.success('Profile updated.'); } catch (err) { setErrs(fieldErrors(err)); toast.error(err.userMessage); }
   };
-  const savePw = (e) => {
+  const savePw = async (e) => {
     e.preventDefault();
     const er = {};
     if (pw.next.length < 6) er.next = 'At least 6 characters.';
     if (pw.next !== pw.again) er.again = 'Passwords do not match.';
     setErrs(er);
     if (Object.keys(er).length) return;
-    try { changePassword(pw.cur, pw.next); setPw({ cur: '', next: '', again: '' }); toast.success('Password changed.'); } catch (err) { setErrs({ cur: err.userMessage }); }
+    try { await changePassword(pw.cur, pw.next); setPw({ cur: '', next: '', again: '' }); toast.success('Password changed.'); } catch (err) { setErrs({ cur: err.userMessage }); }
   };
 
   return (

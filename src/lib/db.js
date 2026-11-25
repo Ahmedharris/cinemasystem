@@ -16,6 +16,14 @@
    Data is persisted in localStorage.
    ===================================================================== */
 
+import { clearToken } from './token';
+
+/* NOTE: the "Users & Security" module (user_account, audit_log) now lives in the
+   Laravel/MySQL backend. Signing in, registering and managing users go through
+   src/lib/api.js; the rows returned by the API are mirrored into the tables below
+   (see auth.startSession / syncUsers) so the screens that are not connected yet
+   (bookings, reports, ...) can still show names. */
+
 const VERSION = 4;
 const KEY = `cinemax_db_v${VERSION}`;
 const SESSION_KEY = 'cinemax_session';
@@ -424,7 +432,7 @@ export function init() {
   persist();
 }
 export function resetDemoData() {
-  try { if (typeof localStorage !== 'undefined') { localStorage.removeItem(KEY); localStorage.removeItem(SESSION_KEY); localStorage.removeItem('cinemax_cart'); } } catch { /* ignore */ }
+  try { if (typeof localStorage !== 'undefined') { localStorage.removeItem(KEY); localStorage.removeItem(SESSION_KEY); localStorage.removeItem('cinemax_cart'); clearToken(); } } catch { /* ignore */ }
   data = null; simCache.clear(); init();
   version += 1; listeners.forEach((fn) => fn());
 }
@@ -975,37 +983,33 @@ export const auth = {
       return id ? get('user_account', id) || null : null;
     } catch { return null; }
   },
-  login(email, password) {
-    const u = data.user_account.find((x) => x.email.toLowerCase() === String(email).trim().toLowerCase());
-    if (!u || u.password_hash !== '$demo$' + password) throw appError('Incorrect email or password.');
-    if (u.account_status !== 'ACTIVE') throw appError('This account is suspended. Please contact support.');
-    u.last_login_at = fmtDT(now());
-    if (u.role !== 'CUSTOMER') audit(u.user_id, 'LOGIN', 'user_account', u.user_id, null, null);
-    localStorage.setItem(SESSION_KEY, String(u.user_id));
+  /** Copy a user returned by the API into the local table (no session change). */
+  mirror(user) { upsertUser(user); save(); return get('user_account', user.user_id); },
+  /** Make an API user the signed-in user of this browser. */
+  startSession(user) {
+    upsertUser(user);
+    localStorage.setItem(SESSION_KEY, String(user.user_id));
     save();
-    return u;
+    return get('user_account', user.user_id);
   },
-  logout() { localStorage.removeItem(SESSION_KEY); version += 1; listeners.forEach((fn) => fn()); },
-  register({ full_name, email, phone, password }) {
-    if (data.user_account.some((x) => x.email.toLowerCase() === email.trim().toLowerCase())) throw appError('An account with this email already exists.');
-    const u = insertRaw('user_account', { role: 'CUSTOMER', cinema_id: null, full_name: full_name.trim(), email: email.trim(), phone: phone || null, password_hash: '$demo$' + password, account_status: 'ACTIVE', created_at: fmtDT(now()), last_login_at: fmtDT(now()) });
-    localStorage.setItem(SESSION_KEY, String(u.user_id));
-    save();
-    return u;
-  },
-  updateProfile(userId, { full_name, phone }) {
-    const u = get('user_account', userId);
-    u.full_name = full_name.trim(); u.phone = phone || null;
-    save();
-    return u;
-  },
-  changePassword(userId, current, next) {
-    const u = get('user_account', userId);
-    if (u.password_hash !== '$demo$' + current) throw appError('Your current password is incorrect.');
-    if (next.length < 6) throw appError('New password must be at least 6 characters.');
-    u.password_hash = '$demo$' + next;
-    save();
-  }
+  endSession() { localStorage.removeItem(SESSION_KEY); version += 1; listeners.forEach((fn) => fn()); }
 };
+
+/** Local copy of a user_account row from the API (the password never leaves the server). */
+function upsertUser(u) {
+  const row = {
+    role: u.role, cinema_id: u.cinema_id ?? null, full_name: u.full_name, email: u.email, phone: u.phone ?? null,
+    account_status: u.account_status, created_at: u.created_at, last_login_at: u.last_login_at ?? null
+  };
+  const existing = get('user_account', u.user_id);
+  if (existing) Object.assign(existing, row);
+  else insertRaw('user_account', { user_id: u.user_id, ...row, password_hash: '(stored on the server)' });
+}
+/** Mirror a whole list of API users (admin Users page). */
+export function syncUsers(rows) { rows.forEach(upsertUser); save(); }
+export function forgetUser(userId) {
+  data.user_account = data.user_account.filter((x) => x.user_id !== Number(userId));
+  save();
+}
 
 init();

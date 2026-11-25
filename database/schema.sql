@@ -8,9 +8,9 @@
 -- =====================================================================
 
 -- To rebuild from scratch during development, uncomment the next line (DESTROYS all data):
--- DROP DATABASE IF EXISTS cinema_db;
-CREATE DATABASE cinema_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE cinema_db;
+-- DROP DATABASE IF EXISTS cinemasystem;
+CREATE DATABASE IF NOT EXISTS cinemasystem CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE cinemasystem;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
@@ -42,6 +42,8 @@ CREATE TABLE user_account (
   account_status  ENUM('ACTIVE','SUSPENDED') NOT NULL DEFAULT 'ACTIVE',
   created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   last_login_at   DATETIME NULL,
+  reset_token_hash       CHAR(64) NULL,                    -- SHA-256 of the one-time "forgot password" token (never the token itself)
+  reset_token_expires_at DATETIME NULL,                    -- the token is valid until this moment
   CONSTRAINT ck_user_branch CHECK (role <> 'CUSTOMER' OR cinema_id IS NULL),
   CONSTRAINT fk_user_cinema FOREIGN KEY (cinema_id) REFERENCES cinema (cinema_id)
 ) ENGINE=InnoDB;

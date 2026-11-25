@@ -1,11 +1,18 @@
-# CineMax – Cinema Management & Online Ticket Booking System (front end)
+# CineMax – Cinema Management & Online Ticket Booking System
 
-A complete, professional front-end for the 20-entity cinema database in `database/schema.sql`
-(ERD: `database/erd.html`). It runs entirely in the browser: a small "demo database" stored in
-`localStorage` mirrors the same table and column names as the SQL schema, so PHP/MySQL can replace
-it later without redesigning the UI.
+A React front end (`src/`) for the 20-entity cinema database in `database/schema.sql`
+(ERD: `database/erd.html`), and a Laravel + MySQL back end (`backend/`) that is being connected **module by module**.
+
+| Module | Status |
+| --- | --- |
+| 1 Users & Security (sign in, sign up, profile, password reset, users admin, audit log) | **connected to Laravel/MySQL** |
+| 2 Movies, 3 Cinemas & screens, 4 Showtimes, 5 Bookings/payments/promotions, 6 Food | still the browser demo database (`localStorage`), same table/column names as the schema |
 
 ## Run it
+
+1. Start **Apache and MySQL** in XAMPP, import the schema once: `mysql -u root < database/schema.sql`
+2. Back end: `cd backend`, `composer install`, `php artisan key:generate`, `php artisan db:seed`, `php artisan serve` (see `backend/README.md`)
+3. Front end:
 
 | How | URL |
 | --- | --- |
@@ -13,9 +20,11 @@ it later without redesigning the UI.
 | Dev server | `npm install` then `npm run dev` → `http://localhost:5173` |
 | Rebuild | `npm run build` (writes `dist/`) |
 
-Stack: React 18, Vite 5, Tailwind CSS v4, react-router (hash routes), lucide-react.
+The front end calls the API at `http://localhost:8000/api` (override with `VITE_API_URL`). Signing in needs the back end running.
 
-## Demo accounts (password for all: `demo1234`)
+Stack: React 18, Vite 5, Tailwind CSS v4, react-router (hash routes), lucide-react; Laravel 12, MySQL/MariaDB.
+
+## Demo accounts (stored in MySQL; password for all: `demo1234`)
 
 | Role | Email |
 | --- | --- |
@@ -48,14 +57,15 @@ delete protection.
 
 ## Notes
 
-- Data lives in the browser. Use **Reset demo data** (site footer or admin sidebar) to restore the seed data.
-- Payments, QR codes and trailers are simulated until the PHP/MySQL back end is connected.
+- Users and the audit log live in MySQL. Everything else still lives in the browser; **Reset demo data** (site footer or admin sidebar) restores it and signs you out.
+- Payments, QR codes and trailers are simulated until their modules are connected.
 - The old static prototype in `legacy_html/` is no longer used and can be deleted.
 
 ## Structure
 
 ```
-database/         schema.sql, erd.html
+backend/          Laravel API (routes/api.php, app/Http/Controllers, database/seeders, tests)
+database/         schema.sql (source of truth), erd.html, build_erd.cjs (regenerates the ERD from the live DB)
 src/lib/          db.js (demo database + rules), analytics, format, cart, seatpick
 src/context/      Auth + UI (toasts, confirm dialogs)
 src/components/   shared UI, seat map, tickets, layouts

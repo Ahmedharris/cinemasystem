@@ -1,5 +1,5 @@
-/* Generates erd.html (Mermaid diagrams + data dictionary) from the LIVE cinema_db schema.
-   Usage:  node build_erd.js [port] [host]
+/* Generates erd.html (Mermaid diagrams + data dictionary) from the LIVE database schema.
+   Usage:  node build_erd.cjs [port] [host] [database]      (database defaults to cinemasystem)
    Requires the mysql client from XAMPP and the schema.sql already imported. */
 const { execFileSync } = require("child_process");
 const fs = require("fs");
@@ -7,6 +7,7 @@ const path = require("path");
 
 const PORT = process.argv[2] || "3306";
 const HOST = process.argv[3] || "127.0.0.1";
+const DB = process.argv[4] || "cinemasystem";
 const MYSQL = "C:\\xampp\\mysql\\bin\\mysql.exe";
 
 function q(sql) {
@@ -41,13 +42,13 @@ const LABEL = {
 const colRows = q(`SELECT c.table_name, c.column_name, c.data_type, c.column_type, c.is_nullable, c.column_key, c.extra, c.column_default
                    FROM information_schema.columns c JOIN information_schema.tables t
                      ON t.table_schema=c.table_schema AND t.table_name=c.table_name AND t.table_type='BASE TABLE'
-                   WHERE c.table_schema='cinema_db' ORDER BY c.table_name, c.ordinal_position`);
+                   WHERE c.table_schema='${DB}' ORDER BY c.table_name, c.ordinal_position`);
 const fkRows = q(`SELECT kcu.constraint_name, kcu.table_name, kcu.column_name, kcu.referenced_table_name, kcu.referenced_column_name, kcu.ordinal_position
                   FROM information_schema.key_column_usage kcu
-                  WHERE kcu.table_schema='cinema_db' AND kcu.referenced_table_name IS NOT NULL
+                  WHERE kcu.table_schema='${DB}' AND kcu.referenced_table_name IS NOT NULL
                   ORDER BY kcu.constraint_name, kcu.ordinal_position`);
 const uniqRows = q(`SELECT table_name, index_name, GROUP_CONCAT(column_name ORDER BY seq_in_index) cols, MAX(non_unique) nu
-                    FROM information_schema.statistics WHERE table_schema='cinema_db' GROUP BY table_name, index_name`);
+                    FROM information_schema.statistics WHERE table_schema='${DB}' GROUP BY table_name, index_name`);
 
 const tables = {};
 colRows.forEach(([t, c, dt, ct, nullable, key, extra, def]) => {
@@ -171,6 +172,7 @@ const RULES = [
   ["Payments and refunds", "payment.payment_type is PAYMENT or REFUND. A booking can have several attempts; only SUCCESS rows count. Net revenue = SUCCESS payments - SUCCESS refunds."],
   ["Promotions", "A booking may use at most one promotion (booking.promotion_id) and stores the discount_amount; validity dates and usage limits are checked by the application inside the booking transaction."],
   ["Roles", "user_account.role (CUSTOMER, ADMIN, MANAGER, BOX_OFFICE) replaces separate customer/staff tables; staff are linked to a branch via cinema_id (CHECK: customers have none)."],
+  ["Passwords and sign-in", "user_account.password_hash stores a bcrypt hash only. Forgot-password uses a one-time token: only its SHA-256 (reset_token_hash) and expiry (reset_token_expires_at) are stored and both are cleared once used. API sessions are stateless signed tokens, so no session table is needed."],
   ["Audit", "audit_log records who changed what, with old and new values."],
   ["Derived values not stored", "Screen capacity = COUNT of active seats. order_detail.line_total is a generated column (quantity x unit_price)."]
 ];

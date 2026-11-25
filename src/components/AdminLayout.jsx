@@ -52,7 +52,7 @@ export default function AdminLayout() {
   const scopeName = cinemaScope ? q.cinema(cinemaScope).cinema_name : 'All cinemas';
 
   const reset = async () => {
-    if (await confirm({ title: 'Reset demo data?', message: 'All data (bookings, movies, users…) goes back to the original sample data.', confirmText: 'Reset', danger: true })) { resetDemoData(); toast.success('Demo data restored.'); }
+    if (await confirm({ title: 'Reset demo data?', message: 'Bookings, movies and the other sample data stored in this browser go back to the original. Users and the audit log live in the database and are not affected. You will be signed out.', confirmText: 'Reset', danger: true })) { resetDemoData(); toast.success('Demo data restored.'); }
   };
   const doLogout = () => { logout(); nav('/'); };
 

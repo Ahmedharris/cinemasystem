@@ -9,7 +9,7 @@ export default function Footer() {
   useDb();
   const { toast, confirm } = useUI();
   const reset = async () => {
-    if (await confirm({ title: 'Reset demo data?', message: 'All bookings, accounts and changes you made will be erased and the original sample data restored.', confirmText: 'Reset', danger: true })) {
+    if (await confirm({ title: 'Reset demo data?', message: 'Bookings and other changes stored in this browser will be erased and the original sample data restored. Your account is kept in the database, but you will be signed out.', confirmText: 'Reset', danger: true })) {
       resetDemoData();
       toast.success('Demo data restored.');
     }

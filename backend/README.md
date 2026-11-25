@@ -1,59 +1,63 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# CineMax backend (Laravel 12 + MySQL)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+REST API for the React front end in the parent folder. The database structure is **`../database/schema.sql`**
+(20 tables, see `../database/erd.html`). There are no Eloquent models and no migrations on purpose:
+every query is written out as SQL in the controllers (`DB::select / insert / update / delete`).
 
-## About Laravel
+## Set up
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+```
+1. Start MySQL in XAMPP
+2. mysql -u root < ../database/schema.sql      (creates the database "cinemasystem" and its 20 tables)
+3. composer install
+4. copy .env.example .env   &&   php artisan key:generate     (.env already points to MySQL, user root, no password)
+5. php artisan db:seed                          (3 cinemas + demo accounts, password demo1234)
+6. php artisan serve                            -> http://localhost:8000/api
+7. php artisan test                             (feature tests; they roll back everything they write)
+```
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+The React app talks to `http://localhost:8000/api` (change with `VITE_API_URL`).
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Modules
 
-## Learning Laravel
+| # | Module | Tables | Status |
+|---|--------|--------|--------|
+| 1 | Users & Security | `user_account`, `audit_log` (+ `cinema` for the branch) | done |
+| 2 | Movie catalogue | `genre`, `movie`, `movie_genre`, `movie_review` | next |
+| 3-6 | Infrastructure, scheduling, booking/payment, food | remaining tables | later |
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### Module 1 endpoints
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| Method | URL | Who | What |
+|--------|-----|-----|------|
+| POST | `/api/auth/login` | public | e-mail + password -> `{ token, user }` |
+| POST | `/api/auth/register` | public | creates a CUSTOMER -> `{ token, user }` |
+| POST | `/api/auth/forgot-password` | public | stores a hashed one-time token (60 min); the link is e-mailed (mail log) |
+| POST | `/api/auth/reset-password` | public | `{ email, token, password }` |
+| GET | `/api/auth/me` | signed in | current user |
+| POST | `/api/auth/logout` | signed in | (stateless, the browser drops the token) |
+| PUT | `/api/auth/profile` | signed in | name, phone |
+| PUT | `/api/auth/password` | signed in | current + new password -> fresh token |
+| GET / POST | `/api/users` | ADMIN | list / create |
+| PUT / DELETE | `/api/users/{id}` | ADMIN | update (role, branch, status) / delete (blocked by foreign keys when history exists) |
+| POST | `/api/users/{id}/reset-password` | ADMIN | random temporary password, shown once |
+| GET | `/api/audit-logs` | ADMIN | latest 1000 audit rows |
 
-## Laravel Sponsors
+Where to look: `routes/api.php`, `app/Http/Controllers/AuthController.php`, `UserController.php`, `AuditLogController.php`.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### How sign-in works
 
-### Premium Partners
+* Passwords are stored as bcrypt in `user_account.password_hash`.
+* The API token is stateless: `base64(payload).HMAC-SHA256(payload, APP_KEY)` with the user id, a 7-day expiry and a
+  fingerprint of the password hash (`app/Support/ApiToken.php`). No session table is needed.
+* `AuthenticateToken` reads the user from `user_account` on every request, so suspending an account or changing
+  its password ends existing sessions immediately. `RequireRole` limits routes to roles (`role:ADMIN`).
+* Forgot-password stores only `SHA-256(token)` and an expiry in `reset_token_hash` / `reset_token_expires_at`.
+  While `APP_DEBUG=true` the API also returns the link so it can be tested without a mail server.
+* Staff sign-ins, password changes/resets and all user changes are written to `audit_log`.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Changing the database
 
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+1. Edit `../database/schema.sql` and apply the same change to the live database (`ALTER TABLE ...`).
+2. Regenerate the ERD: `node ../database/build_erd.cjs`
+3. Update the seeders / controllers.

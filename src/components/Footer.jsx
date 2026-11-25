@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Mail, Phone, MapPin, RotateCcw } from 'lucide-react';
+import { Mail, Phone, MapPin, RotateCcw, Instagram, Facebook } from 'lucide-react';
 import { Logo } from './Navbar';
 import { q, resetDemoData } from '../lib/db';
 import { useUI } from '../context/UIContext';
@@ -20,6 +20,27 @@ export default function Footer() {
         <div>
           <Logo />
           <p className="text-sm text-fg2 mt-4 leading-relaxed">Book the best seats, pre-order snacks and skip the queue. Real-time seat selection across all CineMax cinemas.</p>
+          <div className="mt-5 space-y-2 text-sm text-fg2">
+            <div className="text-xs font-semibold uppercase tracking-wider text-fg3">Follow us</div>
+            <a
+              href="https://www.instagram.com/cinemax.pk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 hover:text-gold transition-colors"
+            >
+              <Instagram size={15} className="text-gold shrink-0" />
+              <span>Instagram: @cinemax.pk</span>
+            </a>
+            <a
+              href="https://www.facebook.com/cinemax.pk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 hover:text-gold transition-colors"
+            >
+              <Facebook size={15} className="text-gold shrink-0" />
+              <span>Facebook: fb.com/cinemax.pk</span>
+            </a>
+          </div>
         </div>
         <div>
           <h4 className="font-semibold mb-4 text-sm">Explore</h4>

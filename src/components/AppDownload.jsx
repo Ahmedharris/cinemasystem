@@ -19,7 +19,7 @@ function PlayStoreIcon() {
 
 export function AppStoreButtons({ compact = false }) {
   const { toast } = useUI();
-  const notify = (store) => toast.info(`CineMax app on ${store} is coming soon!`);
+  const notify = (store) => toast.info(`QISSA app on ${store} is coming soon!`);
 
   const btnCls = `inline-flex items-center gap-2.5 rounded-xl border border-line2 bg-panel2 hover:bg-panel3 hover:border-gold/50 transition-colors text-left ${
     compact ? 'px-3.5 py-2' : 'px-4 py-2.5'
@@ -65,7 +65,7 @@ export function AppDownloadBanner() {
             <Smartphone size={30} />
           </div>
           <div className="min-w-0 space-y-2 text-xs text-fg2">
-            <div className="font-display font-bold text-base text-fg">CineMax Mobile</div>
+            <div className="font-display font-bold text-base text-fg">QISSA Mobile</div>
             <div className="flex items-center gap-2"><Ticket size={14} className="text-gold shrink-0" /> 1-tap seat & snack booking</div>
             <div className="flex items-center gap-2"><QrCode size={14} className="text-gold shrink-0" /> Offline QR e-tickets at gate</div>
             <div className="flex items-center gap-2"><Bell size={14} className="text-gold shrink-0" /> Exclusive app-only promo alerts</div>

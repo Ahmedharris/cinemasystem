@@ -1,5 +1,5 @@
 /* =====================================================================
-   CineMax demo database  (front-end only)
+   QISSA demo database  (front-end only)
 
    Mirrors the 20-table schema in /database/schema.sql, using the SAME table
    and column names, so every screen can later be wired to PHP/MySQL by
@@ -16,9 +16,9 @@
    Data is persisted in localStorage.
    ===================================================================== */
 
-const VERSION = 4;
-const KEY = `cinemax_db_v${VERSION}`;
-const SESSION_KEY = 'cinemax_session';
+const VERSION = 5;
+const KEY = `qissa_db_v${VERSION}`;
+const SESSION_KEY = 'qissa_session';
 
 export const CURRENCY = 'Rs.';
 export const HOLD_MINUTES = 10;       // seats are held while the customer pays
@@ -169,9 +169,9 @@ function buildSeed() {
   seeding = true;
 
   db.cinema = [
-    { cinema_id: 1, cinema_name: 'CineMax Gulberg', city: 'Lahore', address: 'MM Alam Road, Gulberg III', contact_number: '042-111-246-362', cinema_status: 'ACTIVE' },
-    { cinema_id: 2, cinema_name: 'CineMax DHA', city: 'Karachi', address: 'Zamzama Boulevard, Phase 5, DHA', contact_number: '021-111-246-362', cinema_status: 'ACTIVE' },
-    { cinema_id: 3, cinema_name: 'CineMax F-7', city: 'Islamabad', address: 'Jinnah Super Market, F-7 Markaz', contact_number: '051-111-246-362', cinema_status: 'ACTIVE' }
+    { cinema_id: 1, cinema_name: 'QISSA Gulberg', city: 'Lahore', address: 'MM Alam Road, Gulberg III', contact_number: '042-111-246-362', cinema_status: 'ACTIVE' },
+    { cinema_id: 2, cinema_name: 'QISSA DHA', city: 'Karachi', address: 'Zamzama Boulevard, Phase 5, DHA', contact_number: '021-111-246-362', cinema_status: 'ACTIVE' },
+    { cinema_id: 3, cinema_name: 'QISSA F-7', city: 'Islamabad', address: 'Jinnah Super Market, F-7 Markaz', contact_number: '051-111-246-362', cinema_status: 'ACTIVE' }
   ];
 
   const pw = '$demo$demo1234';
@@ -185,10 +185,10 @@ function buildSeed() {
     user(3, 'CUSTOMER', null, 'Hamza Ahmed', 'hamza.ahmed@example.com', '0321-3334455', 'ACTIVE', -45),
     user(4, 'CUSTOMER', null, 'Ayesha Malik', 'ayesha.malik@example.com', '0333-4445566', 'ACTIVE', -30),
     user(5, 'CUSTOMER', null, 'Usman Tariq', 'usman.tariq@example.com', '0345-5556677', 'ACTIVE', -12),
-    user(6, 'ADMIN', null, 'System Admin', 'admin@cinemax.pk', '042-111-246-362', 'ACTIVE', -200),
-    user(7, 'MANAGER', 1, 'Nadia Hussain', 'manager.lahore@cinemax.pk', '0300-7000001', 'ACTIVE', -150),
-    user(8, 'BOX_OFFICE', 1, 'Bilal Sheikh', 'boxoffice.lahore@cinemax.pk', '0300-7000002', 'ACTIVE', -120),
-    user(9, 'MANAGER', 2, 'Omar Farooq', 'manager.karachi@cinemax.pk', '0300-7000003', 'ACTIVE', -140),
+    user(6, 'ADMIN', null, 'System Admin', 'admin@qissa.pk', '042-111-246-362', 'ACTIVE', -200),
+    user(7, 'MANAGER', 1, 'Nadia Hussain', 'manager.lahore@qissa.pk', '0300-7000001', 'ACTIVE', -150),
+    user(8, 'BOX_OFFICE', 1, 'Bilal Sheikh', 'boxoffice.lahore@qissa.pk', '0300-7000002', 'ACTIVE', -120),
+    user(9, 'MANAGER', 2, 'Omar Farooq', 'manager.karachi@qissa.pk', '0300-7000003', 'ACTIVE', -140),
     user(10, 'CUSTOMER', null, 'Zainab Iqbal', 'zainab.iqbal@example.com', '0302-8889900', 'SUSPENDED', -50)
   ];
 
@@ -197,7 +197,7 @@ function buildSeed() {
 
   const M = (id, title, dur, rel, lang, rating, dir, cast, genres, status, art, synopsis) => ({
     movie_id: id, title, duration_minutes: dur, release_date: d(rel), language: lang, content_rating: rating,
-    director: dir, cast_members: cast, synopsis, poster_url: null, trailer_url: `https://trailers.cinemax.pk/watch/${id}`,
+    director: dir, cast_members: cast, synopsis, poster_url: null, trailer_url: `https://trailers.qissa.pk/watch/${id}`,
     movie_status: status, created_at: day(rel - 20, 9), _genres: genres, art
   });
   const movies = [
@@ -424,7 +424,7 @@ export function init() {
   persist();
 }
 export function resetDemoData() {
-  try { if (typeof localStorage !== 'undefined') { localStorage.removeItem(KEY); localStorage.removeItem(SESSION_KEY); localStorage.removeItem('cinemax_cart'); } } catch { /* ignore */ }
+  try { if (typeof localStorage !== 'undefined') { localStorage.removeItem(KEY); localStorage.removeItem(SESSION_KEY); localStorage.removeItem('qissa_cart'); } } catch { /* ignore */ }
   data = null; simCache.clear(); init();
   version += 1; listeners.forEach((fn) => fn());
 }

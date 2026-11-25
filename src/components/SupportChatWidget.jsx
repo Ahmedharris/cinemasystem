@@ -50,7 +50,7 @@ export default function SupportChatWidget() {
     {
       id: 1,
       from: 'agent',
-      text: 'Hi! Welcome to CineMax Live Support. How can I help you today?'
+      text: 'Hi! Welcome to QISSA Live Support. Every Story Matters — how can I help you today?'
     }
   ]);
   const listRef = useRef(null);
@@ -179,7 +179,7 @@ export default function SupportChatWidget() {
 
           <div className="px-3.5 py-2 bg-panel border-t border-line flex items-center justify-between text-[11px] text-fg3">
             <span className="inline-flex items-center gap-1"><Phone size={11} className="text-gold" /> 042-111-246-362</span>
-            <span className="inline-flex items-center gap-1"><Mail size={11} className="text-gold" /> support@cinemax.pk</span>
+            <span className="inline-flex items-center gap-1"><Mail size={11} className="text-gold" /> support@qissa.pk</span>
           </div>
 
           <form onSubmit={handleSubmit} className="p-2.5 bg-panel2 border-t border-line flex items-center gap-2">

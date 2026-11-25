@@ -150,7 +150,7 @@ export default function Home() {
   useDocumentTitle('');
   const { toast } = useUI();
   const [trailer, setTrailer] = useState(null);
-  const [reminders, setReminders] = useStored('cinemax_reminders', []);
+  const [reminders, setReminders] = useStored('qissa_reminders', []);
   const showing = useMemo(() => q.movies().filter((m) => m.movie_status === 'NOW_SHOWING'), []);
   const soon = q.movies().filter((m) => m.movie_status === 'COMING_SOON');
   const featured = [...showing].sort((a, b) => q.ratingOf(b.movie_id).avg - q.ratingOf(a.movie_id).avg).slice(0, 4);
@@ -183,7 +183,7 @@ export default function Home() {
       <StartingSoon />
 
       <section className="container-x section">
-        <div className="mb-6"><div className="eyebrow">Why CineMax</div><h2 className="section-title">A better way to watch</h2></div>
+        <div className="mb-6"><div className="eyebrow">Why QISSA</div><h2 className="section-title">A better way to watch</h2></div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((f) => (
             <div key={f.title} className="card card-pad">

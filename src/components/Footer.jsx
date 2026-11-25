@@ -19,27 +19,27 @@ export default function Footer() {
     <footer className="border-t border-line bg-panel mt-16 no-print">
       <div className="container-x py-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <Logo />
-          <p className="text-sm text-fg2 mt-4 leading-relaxed">Book the best seats, pre-order snacks and skip the queue. Real-time seat selection across all CineMax cinemas.</p>
+          <Logo alwaysShowTagline />
+          <p className="text-sm text-fg2 mt-4 leading-relaxed">Book the best seats, pre-order snacks and skip the queue. Real-time seat selection across all QISSA cinemas.</p>
           <div className="mt-5 space-y-2 text-sm text-fg2">
             <div className="text-xs font-semibold uppercase tracking-wider text-fg3">Follow us</div>
             <a
-              href="https://www.instagram.com/cinemax.pk"
+              href="https://www.instagram.com/qissa.pk"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 hover:text-gold transition-colors"
             >
               <Instagram size={15} className="text-gold shrink-0" />
-              <span>Instagram: @cinemax.pk</span>
+              <span>Instagram: @qissa.pk</span>
             </a>
             <a
-              href="https://www.facebook.com/cinemax.pk"
+              href="https://www.facebook.com/qissa.pk"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 hover:text-gold transition-colors"
             >
               <Facebook size={15} className="text-gold shrink-0" />
-              <span>Facebook: fb.com/cinemax.pk</span>
+              <span>Facebook: fb.com/qissa.pk</span>
             </a>
           </div>
         </div>
@@ -67,7 +67,7 @@ export default function Footer() {
           <ul className="space-y-3 text-sm text-fg2">
             {q.cinemas().map((c) => <li key={c.cinema_id} className="flex gap-2"><MapPin size={15} className="mt-0.5 text-gold shrink-0" /><span>{c.cinema_name}, {c.city}</span></li>)}
             <li className="flex gap-2"><Phone size={15} className="mt-0.5 text-gold shrink-0" /> 042-111-246-362</li>
-            <li className="flex gap-2"><Mail size={15} className="mt-0.5 text-gold shrink-0" /> support@cinemax.pk</li>
+            <li className="flex gap-2"><Mail size={15} className="mt-0.5 text-gold shrink-0" /> support@qissa.pk</li>
           </ul>
         </div>
       </div>
@@ -82,7 +82,7 @@ export default function Footer() {
       </div>
       <div className="border-t border-line">
         <div className="container-x py-5 flex flex-wrap items-center justify-between gap-3 text-xs text-fg3">
-          <span>© {new Date().getFullYear()} CineMax. Cinema Management & Online Ticket Booking System — front-end prototype.</span>
+          <span>© {new Date().getFullYear()} QISSA — Every Story Matters. Cinema Management & Online Ticket Booking System — front-end prototype.</span>
           <button className="inline-flex items-center gap-1.5 hover:text-fg" onClick={reset}><RotateCcw size={13} /> Reset demo data</button>
         </div>
       </div>

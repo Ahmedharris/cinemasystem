@@ -17,7 +17,7 @@ export default function Movies() {
   const { toast } = useUI();
   const [sp, setSp] = useSearchParams();
   const [trailer, setTrailer] = useState(null);
-  const [reminders, setReminders] = useStored('cinemax_reminders', []);
+  const [reminders, setReminders] = useStored('qissa_reminders', []);
   const f = { q: sp.get('q') || '', genre: sp.get('genre') || '', lang: sp.get('lang') || '', rated: sp.get('rated') || '', status: sp.get('status') || 'NOW_SHOWING', sort: sp.get('sort') || 'rating' };
   const set = (k, v) => { const n = new URLSearchParams(sp); if (v && !(k === 'status' && v === 'NOW_SHOWING') && !(k === 'sort' && v === 'rating')) n.set(k, v); else n.delete(k); setSp(n, { replace: true }); };
   const reset = () => setSp({}, { replace: true });

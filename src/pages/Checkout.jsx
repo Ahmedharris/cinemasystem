@@ -141,7 +141,7 @@ export default function Checkout() {
                   </div>
                 </div>
                 <div className="hidden md:flex rounded-2xl p-5 flex-col justify-between aspect-[1.6] self-start bg-gradient-to-br from-indigo-600 via-purple-700 to-fuchsia-700 shadow-xl">
-                  <div className="flex justify-between items-center text-xs font-bold tracking-widest opacity-90"><span>CineMax Pay</span><span>{brand}</span></div>
+                  <div className="flex justify-between items-center text-xs font-bold tracking-widest opacity-90"><span>QISSA Pay</span><span>{brand}</span></div>
                   <div className="font-mono text-[15px] tracking-wider whitespace-nowrap">{card.number || '•••• •••• •••• ••••'}</div>
                   <div className="flex justify-between text-[11px] uppercase opacity-90"><span className="truncate max-w-[9rem]">{card.name || 'Card holder'}</span><span>{card.exp || 'MM/YY'}</span></div>
                 </div>

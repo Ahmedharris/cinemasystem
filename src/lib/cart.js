@@ -2,7 +2,7 @@
    Only its id is remembered here; everything else lives in the booking tables. */
 import { q, releaseHold, parseDT, now } from './db';
 
-const KEY = 'cinemax_cart';
+const KEY = 'qissa_cart';
 export const getCartId = () => { try { return Number(localStorage.getItem(KEY)) || null; } catch { return null; } };
 export const setCartId = (id) => { try { localStorage.setItem(KEY, String(id)); } catch { /* ignore */ } };
 export const clearCart = () => { try { localStorage.removeItem(KEY); } catch { /* ignore */ } };

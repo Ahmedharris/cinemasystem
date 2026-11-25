@@ -1,5 +1,5 @@
 /**
- * CineMax Frontend API Client
+ * QISSA Frontend API Client
  * Connects React frontend components to PHP/MySQL backend endpoints in /api/
  */
 

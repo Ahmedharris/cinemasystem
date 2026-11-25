@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Mail, Phone, MapPin, RotateCcw, Instagram, Facebook } from 'lucide-react';
 import { Logo } from './Navbar';
+import { AppStoreButtons } from './AppDownload';
 import { q, resetDemoData } from '../lib/db';
 import { useUI } from '../context/UIContext';
 import { useDb } from '../hooks/useDb';
@@ -68,6 +69,15 @@ export default function Footer() {
             <li className="flex gap-2"><Phone size={15} className="mt-0.5 text-gold shrink-0" /> 042-111-246-362</li>
             <li className="flex gap-2"><Mail size={15} className="mt-0.5 text-gold shrink-0" /> support@cinemax.pk</li>
           </ul>
+        </div>
+      </div>
+      <div className="border-t border-line">
+        <div className="container-x py-5 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="text-sm font-semibold">Download our app</div>
+            <div className="text-xs text-fg3 mt-0.5">Book tickets faster and access offline QR passes on iOS &amp; Android.</div>
+          </div>
+          <AppStoreButtons compact />
         </div>
       </div>
       <div className="border-t border-line">

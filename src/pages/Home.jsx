@@ -7,6 +7,7 @@ import { Backdrop } from '../components/Poster';
 import Poster from '../components/Poster';
 import MovieCard from '../components/MovieCard';
 import TrailerModal from '../components/TrailerModal';
+import { AppDownloadBanner } from '../components/AppDownload';
 import { Badge, Stars, ProgressBar } from '../components/ui/Misc';
 import { useUI } from '../context/UIContext';
 import { fmtDuration, relDay, time12, nextDays, money, dateMed } from '../lib/format';
@@ -272,6 +273,8 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      <AppDownloadBanner />
 
       <TrailerModal movie={trailer} onClose={() => setTrailer(null)} />
     </div>

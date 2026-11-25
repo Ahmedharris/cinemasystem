@@ -8,6 +8,7 @@ import Poster from '../components/Poster';
 import MovieCard from '../components/MovieCard';
 import TrailerModal from '../components/TrailerModal';
 import { AppDownloadBanner } from '../components/AppDownload';
+import bannerImg from '../assets/qissa-banner.png';
 import { Badge, Stars, ProgressBar } from '../components/ui/Misc';
 import { useUI } from '../context/UIContext';
 import { fmtDuration, relDay, time12, nextDays, money, dateMed } from '../lib/format';
@@ -15,16 +16,26 @@ import { fmtDuration, relDay, time12, nextDays, money, dateMed } from '../lib/fo
 function Hero({ movies, onTrailer }) {
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
+  const total = movies.length + 1; // slide 0 is the QISSA brand banner, then one slide per movie
   useEffect(() => {
-    if (paused || movies.length < 2) return undefined;
-    const id = setInterval(() => setI((x) => (x + 1) % movies.length), 6500);
+    if (paused || total < 2) return undefined;
+    const id = setInterval(() => setI((x) => (x + 1) % total), 6500);
     return () => clearInterval(id);
-  }, [paused, movies.length]);
+  }, [paused, total]);
   if (!movies.length) return null;
   return (
     <section className="container-x pt-6" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
       <div className="relative h-[30rem] sm:h-[34rem] rounded-3xl overflow-hidden border border-line bg-panel">
-        {movies.map((m, idx) => {
+        <div className={`absolute inset-0 transition-opacity duration-700 bg-black ${i === 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} aria-hidden={i !== 0}>
+          <img src={bannerImg} alt="QISSA — Every Story Matters." className="absolute inset-0 w-full h-full object-contain sm:object-cover object-center" />
+          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 to-transparent" />
+          <div className="absolute bottom-14 sm:bottom-16 left-6 sm:left-14 flex flex-wrap gap-3">
+            <Link to="/movies" className="btn btn-primary btn-lg"><Ticket size={18} /> Book tickets</Link>
+            <Link to="/offers" className="btn btn-outline btn-lg">View offers</Link>
+          </div>
+        </div>
+        {movies.map((m, mIdx) => {
+          const idx = mIdx + 1;
           const r = q.ratingOf(m.movie_id);
           const genres = q.genresOf(m.movie_id).map((g) => g.genre_name);
           return (
@@ -53,12 +64,12 @@ function Hero({ movies, onTrailer }) {
             </div>
           );
         })}
-        {movies.length > 1 && (
+        {total > 1 && (
           <>
-            <button className="absolute left-3 top-1/2 -translate-y-1/2 btn btn-icon glass border border-line2 hidden sm:flex" onClick={() => setI((i - 1 + movies.length) % movies.length)} aria-label="Previous"><ChevronLeft size={20} /></button>
-            <button className="absolute right-3 top-1/2 -translate-y-1/2 btn btn-icon glass border border-line2 hidden sm:flex" onClick={() => setI((i + 1) % movies.length)} aria-label="Next"><ChevronRight size={20} /></button>
+            <button className="absolute left-3 top-1/2 -translate-y-1/2 btn btn-icon glass border border-line2 hidden sm:flex" onClick={() => setI((i - 1 + total) % total)} aria-label="Previous"><ChevronLeft size={20} /></button>
+            <button className="absolute right-3 top-1/2 -translate-y-1/2 btn btn-icon glass border border-line2 hidden sm:flex" onClick={() => setI((i + 1) % total)} aria-label="Next"><ChevronRight size={20} /></button>
             <div className="absolute bottom-5 right-6 sm:right-14 flex gap-2">
-              {movies.map((m, idx) => <button key={m.movie_id} onClick={() => setI(idx)} aria-label={`Slide ${idx + 1}`} className={`h-1.5 rounded-full transition-all ${idx === i ? 'w-8 bg-gold' : 'w-3 bg-white/30 hover:bg-white/50'}`} />)}
+              {Array.from({ length: total }, (_, idx) => <button key={idx} onClick={() => setI(idx)} aria-label={`Slide ${idx + 1}`} className={`h-1.5 rounded-full transition-all ${idx === i ? 'w-8 bg-gold' : 'w-3 bg-white/30 hover:bg-white/50'}`} />)}
             </div>
           </>
         )}

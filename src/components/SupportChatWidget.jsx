@@ -1,58 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MessageCircle, Headset, X, Send, Phone, Mail } from 'lucide-react';
-import { CANCEL_CUTOFF_HOURS, HOLD_MINUTES, MAX_SEATS } from '../lib/db';
+import { MessageCircle, Headset, X, Send, Phone, Mail, RotateCcw } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { getChatbotReply } from '../lib/chatbot';
 
 const QUICK_TOPICS = [
-  'Seat & booking help',
-  'Cancellation & refund',
-  'Payment methods',
-  'Food pre-order'
+  'Now showing movies',
+  'Active promo codes',
+  'Ticket prices',
+  'Cancellation & refund'
 ];
 
-function getAgentReply(text) {
-  const q = text.toLowerCase();
-  if (/cancel|refund|money back/.test(q)) {
-    return {
-      text: `Free cancellation is available up to ${CANCEL_CUTOFF_HOURS} hours before showtime from My Bookings. Full refunds (tickets + food) return to your original payment method.`,
-      link: { to: '/my-bookings', label: 'Go to My bookings' }
-    };
-  }
-  if (/seat|hold|book|ticket|qr|max/.test(q)) {
-    return {
-      text: `You can book up to ${MAX_SEATS} seats per order. Selected seats are held for ${HOLD_MINUTES} minutes during checkout, and your QR e-tickets appear right after payment.`,
-      link: { to: '/movies', label: 'Browse movies' }
-    };
-  }
-  if (/pay|card|easypaisa|jazzcash|cash|promo|discount|code/.test(q)) {
-    return {
-      text: 'We accept Credit/Debit Cards, Easypaisa, JazzCash online, and Cash at the box office. You can also apply one promo code at checkout.',
-      link: { to: '/offers', label: 'View offers' }
-    };
-  }
-  if (/food|snack|popcorn|drink|combo|menu/.test(q)) {
-    return {
-      text: 'After choosing your seats you can pre-order snacks & combos and pick them up at the food counter using your pickup code.',
-      link: { to: '/menu', label: 'Explore food menu' }
-    };
-  }
-  return {
-    text: 'Thanks for reaching out! An agent can assist you further via our Support page, or by phone/email (Daily 10:00 – 23:00).',
-    link: { to: '/help', label: 'Open Support & FAQ' }
-  };
-}
+const INITIAL_MESSAGE = {
+  id: 1,
+  from: 'agent',
+  text: 'Hi! Welcome to QISSA Live Support. Ask me about movies, showtimes, ticket prices, promo codes, cinemas, food, or bookings — in English or Roman Urdu!',
+  suggestions: QUICK_TOPICS
+};
 
 export default function SupportChatWidget() {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      from: 'agent',
-      text: 'Hi! Welcome to QISSA Live Support. Every Story Matters — how can I help you today?'
-    }
-  ]);
+  const [messages, setMessages] = useState([INITIAL_MESSAGE]);
   const listRef = useRef(null);
   const timerRef = useRef(null);
 
@@ -77,19 +48,34 @@ export default function SupportChatWidget() {
     const text = raw.trim();
     if (!text) return;
     const userMsg = { id: Date.now(), from: 'user', text };
-    setMessages((prev) => [...prev, userMsg]);
+    const nextHistory = [...messages, userMsg];
+    setMessages(nextHistory);
     setInput('');
     setTyping(true);
 
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      const reply = getAgentReply(text);
+      const reply = getChatbotReply(text, { user, history: nextHistory });
       setMessages((prev) => [
         ...prev,
-        { id: Date.now() + 1, from: 'agent', text: reply.text, link: reply.link }
+        {
+          id: Date.now() + 1,
+          from: 'agent',
+          text: reply.text,
+          link: reply.link,
+          meta: reply.meta,
+          suggestions: reply.suggestions
+        }
       ]);
       setTyping(false);
-    }, 450);
+    }, 350);
+  };
+
+  const resetChat = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setTyping(false);
+    setInput('');
+    setMessages([{ ...INITIAL_MESSAGE, id: Date.now() }]);
   };
 
   const handleSubmit = (e) => {
@@ -97,11 +83,13 @@ export default function SupportChatWidget() {
     sendMessage(input);
   };
 
+  const lastAgentIndex = messages.reduce((idx, m, i) => (m.from === 'agent' ? i : idx), -1);
+
   return (
     <div className="fixed bottom-5 right-5 z-50 no-print flex flex-col items-end gap-3">
       {open && (
         <div
-          className="w-[min(22.5rem,calc(100vw-2rem))] card border-line2 shadow-2xl overflow-hidden flex flex-col fade-up"
+          className="w-[min(23.5rem,calc(100vw-2rem))] card border-line2 shadow-2xl overflow-hidden flex flex-col fade-up"
           role="dialog"
           aria-label="Chat with online agent"
         >
@@ -112,34 +100,47 @@ export default function SupportChatWidget() {
                 <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-ok border-2 border-panel2" />
               </div>
               <div className="min-w-0">
-                <div className="font-semibold text-sm truncate">Online Support Agent</div>
+                <div className="font-semibold text-sm truncate">QISSA Smart Assistant</div>
                 <div className="text-xs text-ok flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-ok inline-block" />
                   Online now
                 </div>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="btn btn-ghost btn-icon text-fg2 hover:text-fg"
-              aria-label="Close chat"
-            >
-              <X size={18} />
-            </button>
+            <div className="flex items-center gap-1">
+              {messages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={resetChat}
+                  className="btn btn-ghost btn-icon text-fg2 hover:text-fg"
+                  aria-label="Reset chat"
+                  title="New chat"
+                >
+                  <RotateCcw size={16} />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="btn btn-ghost btn-icon text-fg2 hover:text-fg"
+                aria-label="Close chat"
+              >
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
-          <div ref={listRef} className="p-3.5 space-y-3 h-72 overflow-y-auto bg-ink/40">
-            {messages.map((m) => (
+          <div ref={listRef} className="p-3.5 space-y-3 h-80 overflow-y-auto bg-ink/40">
+            {messages.map((m, idx) => (
               <div key={m.id} className={`flex flex-col ${m.from === 'user' ? 'items-end' : 'items-start'}`}>
                 <div
-                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                  className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                     m.from === 'user'
                       ? 'bg-gold text-[#17110a] font-medium rounded-br-sm'
                       : 'bg-panel2 border border-line text-fg rounded-bl-sm'
                   }`}
                 >
-                  <p>{m.text}</p>
+                  <p className="whitespace-pre-line">{m.text}</p>
                   {m.link && (
                     <Link
                       to={m.link.to}
@@ -150,6 +151,21 @@ export default function SupportChatWidget() {
                     </Link>
                   )}
                 </div>
+
+                {m.from === 'agent' && idx === lastAgentIndex && !typing && m.suggestions?.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-2">
+                    {m.suggestions.map((topic) => (
+                      <button
+                        key={topic}
+                        type="button"
+                        onClick={() => sendMessage(topic)}
+                        className="chip text-xs py-1 px-2.5"
+                      >
+                        {topic}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
 
@@ -158,21 +174,6 @@ export default function SupportChatWidget() {
                 <div className="bg-panel2 border border-line text-fg2 rounded-2xl rounded-bl-sm px-3.5 py-2 text-xs">
                   Agent is typing…
                 </div>
-              </div>
-            )}
-
-            {messages.length === 1 && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {QUICK_TOPICS.map((topic) => (
-                  <button
-                    key={topic}
-                    type="button"
-                    onClick={() => sendMessage(topic)}
-                    className="chip text-xs py-1 px-2.5"
-                  >
-                    {topic}
-                  </button>
-                ))}
               </div>
             )}
           </div>
@@ -186,7 +187,7 @@ export default function SupportChatWidget() {
             <input
               type="text"
               className="input input-sm flex-1"
-              placeholder="Type your message…"
+              placeholder="Ask about movies, prices, promos…"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               aria-label="Message online agent"
